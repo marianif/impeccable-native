@@ -1,8 +1,8 @@
-Shape the UX and UI for a feature before any code is written. This command produces a **design brief**: a structured artifact that guides implementation through discovery, not guesswork.
+Shape the UX and UI for a React Native feature before any code is written. This command produces a **design brief**: a structured artifact that guides implementation through discovery, not guesswork.
 
 **Scope**: Design planning only. This command does NOT write code. It produces the thinking that makes code good.
 
-**Output**: A design brief that can be handed off to /impeccable craft, or directly to /impeccable for freeform implementation. When visual direction probes are used, the images are supporting artifacts, not the primary output.
+**Output**: A design brief that can be handed off to /impeccable-native craft, or directly to /impeccable-native for freeform implementation. When visual direction probes are used, the images are supporting artifacts, not the primary output.
 
 ## Philosophy
 
@@ -44,9 +44,9 @@ Discovery includes at least one user-answer round unless PRODUCT.md, DESIGN.md, 
 
 Force a visual decision on three fronts. Skip anything PRODUCT.md or DESIGN.md already answers; ask only what's missing.
 
-- **Color strategy for this surface.** Pick one: Restrained / Committed / Full palette / Drenched. Can override the project default if the surface earns it (e.g. a drenched hero inside an otherwise Restrained product).
-- **Theme via scene sentence.** Write one sentence of physical context for this surface: who uses it, where, under what ambient light, in what mood. The sentence forces dark vs light. If it doesn't, add detail until it does.
-- **Two or three named anchor references.** Specific products, brands, objects. Not adjectives like "modern" or "clean."
+- **Color strategy for this surface.** Pick one: Restrained / Committed / Full palette / Drenched. Can override the project default if the surface earns it (e.g. a drenched brand splash inside an otherwise Restrained product app).
+- **Theme via scene sentence.** Write one sentence of physical context: who uses this screen, where, under what ambient light, in what mood. The sentence forces dark vs light. If it doesn't, add detail until it does.
+- **Two or three named anchor references.** Specific apps, products, or physical objects. Not adjectives like "modern" or "clean." Push for real RN/mobile references: e.g. "Revolut's dark dashboard density", "Duolingo's celebratory progress moments", "Things 3's calm list rhythm".
 
 ### Scope
 
@@ -60,10 +60,12 @@ Always ask. Sketch quality and shipped quality are different outputs; don't gues
 Scope answers are task-scoped. Don't write them to PRODUCT.md or DESIGN.md; carry them through the design brief only.
 
 ### Constraints
-- Are there technical constraints? (Framework, performance budget, browser support)
-- Are there content constraints? (Localization, dynamic text length, user-generated content)
-- Mobile/responsive requirements?
-- Accessibility requirements beyond WCAG AA?
+- Are there technical constraints? (RN version, New Architecture, Expo SDK version, specific library versions)
+- Are there content constraints? (Localization, Dynamic Type reflow, user-generated content, long strings)
+- Platform scope: iOS only, Android only, or both? Any known platform divergence for this feature?
+- Tablet or foldable support needed for this screen?
+- Safe area requirements: does this screen sit behind the notch, home indicator, or a custom tab bar?
+- Accessibility requirements beyond the project baseline (VoiceOver, TalkBack, minimum touch targets)?
 
 ### Anti-Goals
 - What should this NOT be? What would be a wrong direction?
@@ -131,7 +133,9 @@ What this is, who it's for, what it needs to accomplish.
 The single most important thing a user should do or understand here.
 
 **3. Design Direction**
-Color strategy (Restrained / Committed / Full palette / Drenched) + the theme scene sentence + 2–3 named anchor references. Reference PRODUCT.md and DESIGN.md where they already answer, and note any per-surface overrides.
+Color strategy (Restrained / Committed / Full palette / Drenched) + the theme scene sentence + 2–3 named anchor references. Reference PRODUCT.md token values and DESIGN.md where they already answer, and note any per-surface overrides.
+
+Note the platform fidelity stance (from PRODUCT.md) and how it affects this specific screen: e.g. "cupertino-android-pragmatic — use `<Stack.Screen>` native header on iOS, custom header on Android".
 
 If you ran the Visual Direction Probe step, name which probe direction won and what changed in the brief because of it.
 
@@ -139,19 +143,19 @@ If you ran the Visual Direction Probe step, name which probe direction won and w
 Fidelity, breadth, interactivity, and time intent from the Scope section of the interview. Task-scoped; these don't persist beyond the brief.
 
 **5. Layout Strategy**
-High-level spatial approach: what gets emphasis, what's secondary, how information flows. Describe the visual hierarchy and rhythm, not specific CSS.
+High-level spatial approach: what gets emphasis, what's secondary, how information flows. Describe the visual hierarchy and rhythm in RN terms — Yoga flexbox direction, scroll container type (ScrollView / FlatList / SectionList / FlashList), safe area handling, keyboard avoidance strategy. Not specific StyleSheet values — the spatial thinking that guides them.
 
 **6. Key States**
 List every state the feature needs: default, empty, loading, error, success, edge cases. For each, note what the user needs to see and feel.
 
 **7. Interaction Model**
-How users interact with this feature. What happens on click, hover, scroll? What feedback do they get? What's the flow from entry to completion?
+How users interact with this feature on a touch surface. What happens on tap, long-press, swipe, pinch, or pan? What haptic feedback is appropriate (light impact, success notification, warning)? What Reanimated gestures or layout animations are needed? What's the flow from entry to completion, and what navigation action closes or advances the screen (back gesture, tab switch, modal dismiss)?
 
 **8. Content Requirements**
-What copy, labels, empty state messages, error messages, and microcopy are needed. Note any dynamic content and its realistic ranges. For image-led surfaces, also list the required image/media roles and their likely source (project asset, generated raster, semantic SVG/CSS, canvas/WebGL, icon library, or accepted omission).
+What copy, labels, empty state messages, error messages, and microcopy are needed. Note any dynamic content and its realistic ranges. For image-led surfaces, list the required image/media roles and their likely source: project asset, expo-image URL, react-native-svg icon, Skia canvas element, or accepted omission. Note any content that must reflow gracefully at 2× Dynamic Type scale.
 
 **9. Recommended References**
-Based on the brief, list which impeccable reference files would be most valuable during implementation (e.g., spatial-design.md for complex layouts, motion-design.md for animated features, interaction-design.md for form-heavy features).
+Based on the brief, list which impeccable-native reference files would be most valuable during implementation. Examples: `layout.md` for scroll-heavy or list-heavy screens, `animate.md` for gesture-driven or transition-heavy features, `adapt.md` for screens needing tablet or Dynamic Type handling, `harden.md` for forms or flows with real edge cases, `overdrive.md` if the brief calls for Skia or ambitious Reanimated work.
 
 **10. Open Questions**
 Anything genuinely unresolved. Don't list "open questions" you've already recommended a default for; assert the default and move on. If you'd write `Recommend: X` next to a question, just decide X.
@@ -162,4 +166,4 @@ STOP and call the AskUserQuestion tool to clarify. Ask for explicit confirmation
 
 If the user disagrees with any part, revisit the relevant discovery questions. A shape run is incomplete until the user confirms direction.
 
-Once confirmed, the brief is complete. The user can now hand it to /impeccable, or use it to guide any other implementation approach. (If the user wants the full discovery-then-build flow in one step, they should use /impeccable craft instead, which runs this command internally.)
+Once confirmed, the brief is complete. The user can now hand it to /impeccable-native, or use it to guide any other implementation approach. (If the user wants the full discovery-then-build flow in one step, they should use /impeccable-native craft instead, which runs this command internally.)
