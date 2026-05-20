@@ -1,26 +1,23 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "impeccable",
+  "name": "impeccable-native",
   "metadata": {
-    "description": "Design fluency for AI harnesses. 1 skill, 23 commands, and curated anti-patterns for impeccable frontend design."
+    "description": "React Native design fluency for AI harnesses. 1 skill, 22 commands, for impeccable mobile UI design."
   },
   "owner": {
-    "name": "Paul Bakaus",
-    "email": "paul@paulbakaus.com"
+    "name": "Federica Mariani"
   },
   "plugins": [
     {
-      "name": "impeccable",
-      "description": "Design fluency for frontend development. 1 skill with 23 commands (/impeccable polish, /impeccable audit, /impeccable critique, etc.) and curated anti-pattern detection.",
-      "version": "3.1.1",
+      "name": "impeccable-native",
+      "description": "React Native design fluency for AI coding agents. 1 skill with 22 commands (/impeccable-native craft, /impeccable-native audit, /impeccable-native critique, etc.) tuned for mobile-first UI work.",
+      "version": "0.1.0",
       "author": {
-        "name": "Paul Bakaus",
-        "email": "paul@paulbakaus.com"
+        "name": "Federica Mariani"
       },
-      "source": "./plugin",
+      "source": "./.claude-plugin",
       "category": "design",
-      "homepage": "https://impeccable.style",
-      "tags": ["design", "frontend", "ui", "ux", "skills", "commands"]
+      "tags": ["design", "react-native", "expo", "mobile", "ux", "skills", "commands"]
     }
   ]
 }

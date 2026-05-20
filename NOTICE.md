@@ -1,25 +1,16 @@
-# Notice
+# NOTICE
 
-Impeccable
-Copyright 2025-2026 Paul Bakaus
+impeccable-native is a hard fork of [impeccable](https://github.com/pbakaus/impeccable) by Paul Bakaus,
+licensed under the Apache License 2.0.
 
-## Anthropic frontend-design Skill
+This fork adapts the design methodology and skill architecture for React Native and Expo projects.
+The live browser iteration system and web anti-pattern detector have been removed.
+All reference files have been rewritten for mobile-first UI work.
 
-The `impeccable` skill in this project builds on Anthropic's original frontend-design skill.
+## Upstream attribution
 
-**Original work:** https://github.com/anthropics/skills/tree/main/skills/frontend-design
-**Original license:** Apache License 2.0
-**Copyright:** 2025 Anthropic, PBC
+Original project: https://github.com/pbakaus/impeccable
+Original author: Paul Bakaus <paul@paulbakaus.com>
+License: Apache 2.0
 
-This project extends the original with:
-- 7 domain-specific reference files (typography, color-and-contrast, spatial-design, motion-design, interaction-design, responsive-design, ux-writing)
-- 23 commands
-- Expanded patterns and anti-patterns
-
-## Typecraft Guide Skill
-
-The `typography.md` reference in this project incorporates a set of tactical additions merged in from ehmo's `typecraft-guide-skill` at the author's request: dark-mode weight/tracking compensation, `font-display: optional` vs `swap`, preload-critical-weight-only guidance, variable fonts for 3+ weights, `clamp()` max-to-min ratio bound, responsive measure/container coupling, `text-wrap: balance` / `pretty`, `font-optical-sizing: auto`, ALL-CAPS tracking quantification, and the paragraph-rhythm rule (space OR indent, never both).
-
-**Original work:** https://github.com/ehmo/typecraft-guide-skill
-**Original license:** see upstream repo
-**Author:** ehmo
+A copy of the Apache 2.0 license is included in LICENSE.

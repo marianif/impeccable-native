@@ -8,7 +8,6 @@ import {
   replacePlaceholders,
   compileProviderBlocks,
 } from '../utils.js';
-import { SKILL_CATEGORIES, CATEGORY_ORDER } from '../sub-pages-data.js';
 
 /**
  * Map from frontmatter field name to extraction spec.
@@ -197,20 +196,14 @@ export function createTransformer(config) {
         if (val) frontmatterObj[spec.yamlKey] = val;
       }
 
-      // Replace {{command_hint}} in argument-hint with command names from metadata,
-      // grouped by category with middle dots between groups for natural line-breaking.
+      // Replace {{command_hint}} in argument-hint with the flat list of command names.
       if (frontmatterObj['argument-hint']?.includes('{{command_hint}}')) {
         const metaScript = skill.scripts?.find(s => s.name === 'command-metadata.json');
         if (metaScript) {
-          const commands = Object.keys(JSON.parse(metaScript.content));
-          // Derive groups from SKILL_CATEGORIES, excluding the parent skill name
-          const grouped = CATEGORY_ORDER
-            .map(cat => commands.filter(c => SKILL_CATEGORIES[c] === cat).join('|'))
-            .filter(Boolean)
-            .join(' · ');
+          const commands = Object.keys(JSON.parse(metaScript.content)).join('|');
           frontmatterObj['argument-hint'] = frontmatterObj['argument-hint'].replace(
             '{{command_hint}}',
-            grouped
+            commands
           );
         }
       }

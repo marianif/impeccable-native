@@ -9,8 +9,6 @@ import path from 'path';
 //   New installs write project config at .impeccable/live/config.json instead.
 export const PER_PROJECT_SCRIPT_ARTIFACTS = new Set(['config.json']);
 
-const DETECTOR_BUNDLE_DIR = 'cli/engine';
-
 // Walk the harness-dir skill tree and return any per-project script
 // artifacts found, ready for restoration after a full sync rm+recopy.
 // Returns [{ relPath, content: Buffer }], where relPath is relative to
@@ -39,32 +37,6 @@ export function restorePerProjectArtifacts(rootDir, stashed) {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content);
   }
-}
-
-function readDetectorBundleScripts(rootDir) {
-  const detectorDir = path.join(rootDir, DETECTOR_BUNDLE_DIR);
-  if (!fs.existsSync(detectorDir)) return [];
-
-  const scripts = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const entryPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(entryPath);
-        continue;
-      }
-      if (!entry.isFile()) continue;
-      const relPath = path.relative(detectorDir, entryPath).split(path.sep).join('/');
-      scripts.push({
-        name: `detector/${relPath}`,
-        content: fs.readFileSync(entryPath, 'utf-8'),
-        filePath: entryPath,
-        generated: true,
-      });
-    }
-  };
-  walk(detectorDir);
-  return scripts;
 }
 
 /**
@@ -230,8 +202,6 @@ export function readSourceFiles(rootDir) {
       });
     }
   }
-  scripts.push(...readDetectorBundleScripts(rootDir));
-
   const agents = [];
   const agentsDir = path.join(skillDir, 'agents');
   if (fs.existsSync(agentsDir)) {
@@ -312,201 +282,6 @@ export function writeFile(filePath, content) {
   fs.writeFileSync(filePath, content, 'utf-8');
 }
 
-/**
- * Extract DO/DON'T patterns from a skill markdown file, grouped by section
- * (h3 `### ` headings). Recognizes both formats:
- *   - Markdown bullet form:  `**DO**: …`  /  `**DON'T**: …`
- *   - Prose form:            `DO …`       /  `DO NOT …`
- *
- * Defaults to the main impeccable SKILL.md but accepts any relative path so
- * rules in `cli/engine/detect-antipatterns.mjs` can anchor to register-specific
- * reference files (e.g. `reference/editorial.md`) via an optional `skillFile`
- * field. Callers that don't pass `relativePath` get the legacy behavior.
- *
- * Returns { patterns: [...], antipatterns: [...] }
- */
-// Curated short-list for the homepage Antidote section. Intentionally
-// hand-written (not auto-extracted) so the copy stays tight and
-// editorial. The long-form catalog lives on /slop — this is the teaser.
-const CURATED_CATEGORIES = [
-  {
-    name: 'Typography',
-    do: [
-      'Pair a distinctive display face with a restrained body face; vary across projects.',
-      'Use a ≥1.25 scale ratio between hierarchy steps. Flat scales read as bland.',
-      'Cap body line length at 65–75ch. Wider is fatiguing.',
-    ],
-    dont: [
-      'Inter, Roboto, Plex, Fraunces, or any other reflex default. Look further.',
-      'Monospace as lazy shorthand for "technical."',
-      'Long passages in uppercase. Reserve all-caps for short labels.',
-    ],
-  },
-  {
-    name: 'Color & Contrast',
-    do: [
-      'Use OKLCH. Reduce chroma near lightness extremes.',
-      'Tint neutrals toward the brand hue. Chroma 0.005–0.01 is enough.',
-      'Pick a color strategy before picking colors (Restrained, Committed, Full, Drenched).',
-    ],
-    dont: [
-      'Pure #000 or #fff. Always tint.',
-      'Dark mode + purple-to-cyan gradients. The AI tell.',
-      'Gradient text via background-clip. Use weight or size for emphasis.',
-    ],
-  },
-  {
-    name: 'Layout & Space',
-    do: [
-      'Vary spacing for rhythm. Tight groupings, generous separations.',
-      'Use the simplest tool: Flexbox for 1D, Grid for 2D, plain flow often enough.',
-      'Let whitespace carry hierarchy before reaching for color or scale.',
-    ],
-    dont: [
-      'Wrap everything in cards. Nested cards are always wrong.',
-      'Identical card grids of icon + heading + text, repeated endlessly.',
-      'The hero-metric template: big number, small label, supporting stats, gradient accent.',
-    ],
-  },
-  {
-    name: 'Visual Details',
-    do: [
-      'Commit to an aesthetic direction and execute it with precision.',
-      'Use ornament only where it earns its place.',
-    ],
-    dont: [
-      'Side-stripe borders (border-left/-right > 1px). The dashboard tell.',
-      'Glassmorphism everywhere. Rare and purposeful or nothing.',
-      'Rounded rectangles with generic drop shadows. "Could be any AI output."',
-    ],
-  },
-  {
-    name: 'Motion',
-    do: [
-      'Use transform and opacity. Animate the composited properties only.',
-      'Ease out with exponential curves (quart / quint / expo).',
-      'Respect prefers-reduced-motion on every transition.',
-    ],
-    dont: [
-      'Animate layout (width, height, padding, margin).',
-      'Bounce or elastic easing. Feels dated and tacky.',
-      'Decorative motion for its own sake. Motion should signal state.',
-    ],
-  },
-  {
-    name: 'Interaction',
-    do: [
-      'Use optimistic UI: update immediately, sync later.',
-      'Design empty states that teach the interface, not just say "nothing here."',
-      'Progressive disclosure: start simple, reveal sophistication on demand.',
-    ],
-    dont: [
-      'Make every button primary. Hierarchy matters.',
-      'Default to a modal. Exhaust inline alternatives first.',
-      'Repeat information the user can already see.',
-    ],
-  },
-];
-
-export function readPatterns(_rootDir, _relativePath) {
-  // Hand-curated list — see CURATED_CATEGORIES above. The homepage
-  // Antidote teaser uses this; the full catalog lives on /slop.
-  return {
-    patterns: CURATED_CATEGORIES.map((c) => ({ name: c.name, items: c.do })),
-    antipatterns: CURATED_CATEGORIES.map((c) => ({ name: c.name, items: c.dont })),
-  };
-}
-
-// Previous SKILL.md parser retained below but disabled; kept as a
-// reference for how prefix-style extraction used to work.
-function _legacyReadPatterns(rootDir, relativePath = 'skill/SKILL.md') {
-  const skillPath = path.join(rootDir, relativePath);
-
-  if (!fs.existsSync(skillPath)) {
-    return { patterns: [], antipatterns: [] };
-  }
-
-  const content = fs.readFileSync(skillPath, 'utf-8');
-  const lines = content.split('\n');
-
-  const patternsMap = {};  // category -> items[]
-  const antipatternsMap = {};  // category -> items[]
-  let currentSection = null;
-
-  const pushPattern = (item) => {
-    if (!currentSection) return;
-    if (!patternsMap[currentSection]) patternsMap[currentSection] = [];
-    patternsMap[currentSection].push(item);
-  };
-  const pushAntipattern = (item) => {
-    if (!currentSection) return;
-    if (!antipatternsMap[currentSection]) antipatternsMap[currentSection] = [];
-    antipatternsMap[currentSection].push(item);
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Track section headings (### Typography, ### Color & Theme, etc.)
-    if (trimmed.startsWith('### ')) {
-      currentSection = trimmed.slice(4).trim();
-      // Normalize "Color & Theme" to "Color & Contrast" for consistency
-      if (currentSection === 'Color & Theme') {
-        currentSection = 'Color & Contrast';
-      }
-      continue;
-    }
-
-    // Markdown bullet form (legacy): **DO**: ... and **DON'T**: ...
-    if (trimmed.startsWith('**DO**:')) {
-      pushPattern(trimmed.slice(7).trim());
-      continue;
-    }
-    if (trimmed.startsWith("**DON'T**:")) {
-      pushAntipattern(trimmed.slice(10).trim());
-      continue;
-    }
-
-    // XML-block prose form (current). Both space and colon variants:
-    //   "DO NOT use ..."  /  "DO NOT: Use ..."
-    //   "DO use ..."      /  "DO: Use ..."
-    // IMPORTANT: check `DO NOT` BEFORE `DO` so the prefix doesn't get
-    // gobbled by the wrong matcher.
-    if (trimmed.startsWith('DO NOT: ')) {
-      pushAntipattern(trimmed.slice('DO NOT: '.length).trim());
-      continue;
-    }
-    if (trimmed.startsWith('DO NOT ')) {
-      pushAntipattern(trimmed.slice('DO NOT '.length).trim());
-      continue;
-    }
-    if (trimmed.startsWith('DO: ')) {
-      pushPattern(trimmed.slice('DO: '.length).trim());
-      continue;
-    }
-    if (trimmed.startsWith('DO ')) {
-      pushPattern(trimmed.slice('DO '.length).trim());
-      continue;
-    }
-  }
-
-  // Convert maps to arrays in consistent order
-  const sectionOrder = ['Typography', 'Color & Contrast', 'Layout & Space', 'Visual Details', 'Motion', 'Interaction', 'Responsive', 'UX Writing'];
-
-  const patterns = [];
-  const antipatterns = [];
-
-  for (const section of sectionOrder) {
-    if (patternsMap[section] && patternsMap[section].length > 0) {
-      patterns.push({ name: section, items: patternsMap[section] });
-    }
-    if (antipatternsMap[section] && antipatternsMap[section].length > 0) {
-      antipatterns.push({ name: section, items: antipatternsMap[section] });
-    }
-  }
-
-  return { patterns, antipatterns };
-}
 
 /**
  * Provider-specific placeholders
@@ -524,77 +299,12 @@ export const PROVIDER_PLACEHOLDERS = {
     ask_instruction: 'ask the user directly to clarify what you cannot infer.',
     command_prefix: '/'
   },
-  'gemini': {
-    model: 'Gemini',
-    config_file: 'GEMINI.md',
-    ask_instruction: 'ask the user directly to clarify what you cannot infer.',
-    command_prefix: '/'
-  },
-  'codex': {
-    model: 'GPT',
-    config_file: 'AGENTS.md',
-    ask_instruction: "STOP and use Codex's structured user-input/question tool when available; if unavailable, ask directly in chat to clarify what you cannot infer.",
-    command_prefix: '$'
-  },
-  'agents': {
-    model: 'the model',
-    config_file: '.github/copilot-instructions.md',
-    ask_instruction: 'ask the user directly to clarify what you cannot infer.',
-    command_prefix: '/'
-  },
-  'kiro': {
-    model: 'Claude',
-    config_file: '.kiro/settings.json',
-    ask_instruction: 'ask the user directly to clarify what you cannot infer.',
-    command_prefix: '/'
-  },
-  opencode: {
-    model: 'Claude',
-    config_file: 'AGENTS.md',
-    ask_instruction: 'STOP and call the `question` tool to clarify.',
-    command_prefix: '/'
-  },
-  'pi': {
-    model: 'the model',
-    config_file: 'AGENTS.md',
-    ask_instruction: 'ask the user directly to clarify what you cannot infer.',
-    command_prefix: '/'
-  },
-  'qoder': {
-    model: 'the model',
-    config_file: 'AGENTS.md',
-    ask_instruction: 'ask the user directly to clarify what you cannot infer.',
-    command_prefix: '/'
-  },
-  'trae': {
-    model: 'the model',
-    config_file: 'RULES.md',
-    ask_instruction: 'ask the user directly to clarify what you cannot infer.',
-    command_prefix: '/'
-  },
-  'rovo-dev': {
-    model: 'Rovo Dev',
-    config_file: 'AGENTS.md',
-    ask_instruction: 'ask the user directly to clarify what you cannot infer.',
-    command_prefix: '/'
-  }
 };
 
 export const PROVIDER_BLOCK_TAGS = new Set([
-  'agents',
   'claude',
   'claude-code',
-  'codex',
   'cursor',
-  'gemini',
-  'github',
-  'kiro',
-  'opencode',
-  'pi',
-  'qoder',
-  'rovo-dev',
-  'trae',
-  'trae-cn',
 ]);
 
 /**
@@ -636,12 +346,12 @@ const EXCLUDED_FROM_SUGGESTIONS = new Set([
   'frontend-design',          // deprecated shim
 ]);
 
-// Sub-commands of /impeccable that should appear in {{available_commands}}.
-// These are the commands that audit/critique/etc. reference when suggesting next steps.
+// Sub-commands of /impeccable-native that appear in {{available_commands}}.
 const IMPECCABLE_SUB_COMMANDS = [
   'adapt', 'animate', 'audit', 'bolder', 'clarify', 'colorize',
-  'critique', 'delight', 'distill', 'document', 'harden', 'layout',
-  'onboard', 'optimize', 'overdrive', 'polish', 'quieter', 'shape', 'typeset',
+  'craft', 'critique', 'delight', 'distill', 'document', 'extract',
+  'harden', 'layout', 'onboard', 'optimize', 'overdrive', 'polish',
+  'quieter', 'shape', 'teach', 'typeset',
 ];
 
 export function replacePlaceholders(content, provider, commandNames = [], allSkillNames = []) {
