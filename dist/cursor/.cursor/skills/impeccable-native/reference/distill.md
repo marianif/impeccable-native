@@ -1,4 +1,4 @@
-Strip a React Native surface to its essence. Remove anything that doesn't earn its place: redundant `View` wrappers, repeated screens, decorative cards, token sprawl, modals that should have been inline.
+Strip a React Native surface design to its essence. Remove anything that doesn't earn its place: redundant `View` wrappers, repeated screens, decorative cards, token sprawl, modals that should have been inline.
 
 This is the cut pass. Before reaching for `polish`, make sure there's nothing left to take away.
 
@@ -20,14 +20,14 @@ Analyze what makes the surface feel complex, cluttered, or padded:
    - **Screen creep**: a stack route for what should be a bottom sheet, a modal for what should be an inline expand, six bottom tabs when four would do.
 
 2. **Find the essence**:
-   - What's the primary user goal on this screen? (There should be ONE.)
+   - What's the primary user goal? (There should be ONE.)
    - What's actually necessary vs nice-to-have on a phone in a thumb in motion?
    - What can be removed, hidden behind a sheet, or merged into a sibling?
    - What's the 20% that delivers 80% of value?
 
 If any of these are unclear from the codebase or PRODUCT.md, ask the user directly to clarify what you cannot infer.
 
-**CRITICAL**: Simplicity is not about removing features. It's about removing obstacles between users and their goals on a small screen. Every `View`, every screen, every token should justify its existence.
+**CRITICAL**: Simplicity is not about removing features. It's about removing obstacles between users and their goals on mobile screen. Every `View`, every screen, every token should justify its existence.
 
 ## Plan Simplification
 
