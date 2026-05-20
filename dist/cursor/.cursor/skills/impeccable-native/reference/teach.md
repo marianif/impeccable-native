@@ -1,11 +1,11 @@
 # Teach Flow
 
-Gathers design context for a project and writes two complementary files at the project root:
+Gathers design context for a React Native / Expo project and writes two complementary files at the project root:
 
-- **PRODUCT.md** (strategic): root project file for register, target users, product purpose, brand personality, anti-references, strategic design principles. Answers "who/what/why".
-- **DESIGN.md** (visual): root project file for visual theme, color palette, typography, components, layout. Follows the [Google Stitch DESIGN.md format](https://stitch.withgoogle.com/docs/design-md/format/). Answers "how it looks".
+- **PRODUCT.md** (strategic): register, target users, product purpose, platform fidelity, primary devices, brand personality, anti-references, design principles. Answers "who/what/why/where".
+- **DESIGN.md** (visual): token definitions for color, typography, spacing, radius, shadow, and motion — structured as a `tokens.ts` module. Answers "how it looks".
 
-Every other impeccable command reads these files before doing any work.
+Every other impeccable-native command reads these files before doing any work.
 
 ## Step 1: Load current state
 
@@ -19,32 +19,39 @@ The output tells you whether PRODUCT.md and/or DESIGN.md already exist. If `migr
 
 Decision tree:
 - **Neither file exists (empty project or no context yet)**: do Steps 2-4 (write PRODUCT.md), then decide on DESIGN.md based on whether there's code to analyze.
-- **PRODUCT.md exists, DESIGN.md missing**: skip to Step 5 and offer to run `/impeccable document` for DESIGN.md.
-- **PRODUCT.md exists but has no `## Register` section (legacy)**: add it. Infer a hypothesis from the codebase (see Step 2), confirm with the user, write the field.
+- **PRODUCT.md exists, DESIGN.md missing**: skip to Step 5 and offer to run `/impeccable-native document` for DESIGN.md.
+- **PRODUCT.md exists but has no `## Register` section (legacy)**: add it. Also check for the `## Platform Fidelity` and `## Primary Devices` sections; if missing, ask and add them. Infer a hypothesis from the codebase (see Step 2), confirm with the user, write the fields.
 - **Both exist**: ask the user directly to clarify what you cannot infer. Ask which file to refresh. Skip the one the user doesn't want changed.
 - **Just DESIGN.md exists (unusual)**: do Steps 2-4 to produce PRODUCT.md.
 
 Never silently overwrite an existing file. Always confirm first.
 
-If teach was invoked as a setup blocker by another command, such as `/impeccable craft landing page`, pause that command here. Complete teach, re-run the loader, then resume the original command with the freshly loaded context. For craft, resume into shape next; teach creates project context, but it is not a substitute for the task-specific shape interview and confirmed design brief.
+If teach was invoked as a setup blocker by another command, such as `/impeccable-native craft onboarding flow`, pause that command here. Complete teach, re-run the loader, then resume the original command with the freshly loaded context. For craft, resume into shape next; teach creates project context, but it is not a substitute for the task-specific shape interview and confirmed design brief.
 
 ## Step 2: Explore the codebase
 
-Before asking questions, thoroughly scan the project to discover what you can:
+Before asking questions, thoroughly scan the project to discover what you can. Also run the flavor detector if not already done this session:
 
-- **README and docs**: Project purpose, target audience, any stated goals
-- **Package.json / config files**: Tech stack, dependencies, existing design libraries
-- **Existing components**: Current design patterns, spacing, typography in use
-- **Brand assets**: Logos, favicons, color values already defined
-- **Design tokens / CSS variables**: Existing color palettes, font stacks, spacing scales
-- **Any style guides or brand documentation**
+```bash
+node .cursor/skills/impeccable-native/scripts/detect-rn-flavor.mjs
+```
 
-Also form a **register hypothesis** from what you find:
+Then look for:
 
-- Brand signals: `/`, `/about`, `/pricing`, `/blog/*`, `/docs/*`, hero sections, big typography, scroll-driven sections, landing-page-shaped content.
-- Product signals: `/app/*`, `/dashboard`, `/settings`, `/(auth)`, forms, data tables, side/top nav, app-shell components.
+- **README and docs**: App purpose, target audience, any stated goals
+- **package.json / app.json / app.config.js**: SDK version, dependencies, existing libraries (navigation, animation, styling)
+- **Existing screens and components**: Current design patterns, spacing, color values, typography in use
+- **Brand assets**: App icon, splash image, logo files — any established brand color
+- **Existing tokens or theme files**: `tokens.ts`, `theme.ts`, `colors.ts`, `StyleSheet` constants — extract values if present
+- **Navigation structure**: Tab bar screens, stack screens, drawer — this reveals the app's primary hierarchy
 
-Register is a hypothesis at this point, not a decision; Step 3 confirms it.
+Also form a **register hypothesis** and **platform hypothesis**:
+
+- Brand signals: splash screens, onboarding brand moments, marketing-style landing screens, hero imagery, campaign surfaces.
+- Product signals: tab navigators, stack navigators with data screens, settings screens, dashboards, forms, lists.
+- Platform fidelity signals: presence of `Platform.OS` checks, `@react-navigation/native-stack` (leans iOS-native), `@react-navigation/material-top-tabs` (leans Material), NativeWind or custom design system (leans custom-cross-platform).
+
+Register and platform-fidelity are hypotheses at this point; Step 3 confirms them.
 
 Note what you've learned and what remains unclear. This exploration feeds both PRODUCT.md and DESIGN.md.
 
@@ -69,30 +76,38 @@ Ask enough to complete PRODUCT.md. At minimum, cover register confirmation, user
 
 ### Register (ask first; it shapes everything below)
 
-Every design task is either **brand** (marketing, landing, campaign, long-form content, portfolio: design IS the product) or **product** (app UI, admin, dashboards, tools: design SERVES the product).
+Every design task is either **brand** (splash screens, onboarding brand moments, marketing surfaces: design IS the product) or **product** (app UI, navigation flows, settings, dashboards, tools: design SERVES the product).
 
 If Step 2 produced a clear hypothesis, lead with it: *"From the codebase, this looks like a [brand / product] surface. Does that match your intent, or should we treat it differently?"*
 
-If the signal is genuinely split (e.g. a product with a big marketing landing), ask the user directly to clarify what you cannot infer. Ask which register describes the **primary** surface. The register can be overridden per task later, but PRODUCT.md carries one default.
+If the signal is split (e.g. an app with both a marketing onboarding and a product core), ask the user directly to clarify what you cannot infer. Ask which register describes the **primary** surface.
 
 ### Users & Purpose
-- Who uses this? What's their context when using it?
+- Who uses this app? Age range, technical level, primary use case?
+- When and where do they open it — on a commute, at a desk, in a specific workflow?
 - What job are they trying to get done?
-- For brand: what emotions should the interface evoke? (confidence, delight, calm, urgency)
-- For product: what workflow are they in? What's the primary task on any given screen?
+- For brand: what emotions should the app evoke? (confidence, calm, delight, urgency)
+- For product: what's the primary task on any given screen?
+
+### Platform & Devices
+- Is this phone-only, or does it need to work on tablet too? Foldables in scope?
+- Platform fidelity stance: should iOS feel iOS-native and Android feel Android-native, or is there a custom design language consistent across both?
+  - Lead with the hypothesis from Step 2: *"The codebase suggests [cupertino-android-pragmatic / custom-cross-platform]. Does that match your intent?"*
+  - Options: `cupertino-everywhere`, `material-everywhere`, `cupertino-android-pragmatic` (recommended default), `custom-cross-platform`.
 
 ### Brand & Personality
-- How would you describe the brand personality in 3 words?
-- Reference sites or apps that capture the right feel? What specifically about them?
-  - For brand, push for real-world references in the right lane (tech-minimal, editorial-magazine, consumer-warm, brutalist-grid, etc.), not generic "modern" adjectives.
-  - For product, push for category best-tool references (Linear, Figma, Notion, Raycast, Stripe).
-- What should this explicitly NOT look like? Any anti-references?
+- How would you describe the brand personality in 3–5 words?
+- Reference apps that capture the right feel? What specifically about them?
+  - Push for real app references, not generic adjectives: e.g. "Notion's calm information density", "Duolingo's playful progression", "Linear's keyboard-first precision".
+- What should this explicitly NOT look like? Anti-references?
+  - Prompt if needed: "Not another white-background todo app?", "Not Material 3 defaults?", "Not a Stripe-cream finance app?"
 
-### Accessibility & Inclusion
-- Specific accessibility requirements? (WCAG level, known user needs)
-- Considerations for reduced motion, color blindness, or other accommodations?
+### Accessibility
+- Any known accessibility requirements? (VoiceOver support, minimum touch target sizes, Dynamic Type support)
+- Users with motor impairments or visual impairments to consider?
+- `prefers-reduced-motion` / `useReducedMotion` — should animations be skippable by default?
 
-Skip questions where the answer is already clear. **Do NOT ask about colors, fonts, radii, or visual styling here.** Those belong in DESIGN.md, not PRODUCT.md.
+Skip questions where the answer is already clear. **Do NOT ask about colors, fonts, radii, or spacing here.** Those belong in DESIGN.md, not PRODUCT.md.
 
 ## Step 4: Write PRODUCT.md
 
@@ -108,49 +123,58 @@ Synthesize into a strategic document:
 product
 
 ## Users
-[Who they are, their context, the job to be done]
+[Who they are, their age range, technical level, context — when and where they open the app]
 
 ## Product Purpose
-[What this product does, why it exists, what success looks like]
+[What this app does, why it exists, what success looks like for the user]
+
+## Platform Fidelity
+
+cupertino-android-pragmatic
+
+## Primary Devices
+
+phone-only
 
 ## Brand Personality
-[Voice, tone, 3-word personality, emotional goals]
+[3–5 adjectives. Voice, tone, emotional goals.]
 
 ## Anti-references
-[What this should NOT look like. Specific bad-example sites or patterns to avoid.]
+[What this should NOT look like. Specific bad-example apps or patterns to avoid.]
 
 ## Design Principles
-[3-5 strategic principles derived from the conversation. Principles like "practice what you preach", "show, don't tell", "expert confidence". NOT visual rules like "use OKLCH" or "magenta accent".]
+[3–5 strategic principles derived from the conversation. E.g. "thumb-first everything", "one primary action per screen", "calm by default, expressive on success". NOT visual rules like "use #D4522A" or "borderRadius: 12".]
 
-## Accessibility & Inclusion
-[WCAG level, known user needs, considerations]
+## Accessibility
+[VoiceOver/TalkBack requirements, Dynamic Type support, reduced motion policy, minimum touch target commitment]
 ```
 
-Register is either `brand` or `product` as a bare value. No prose, no commentary.
+`Register` is either `brand` or `product` as a bare value. `Platform Fidelity` is one of: `cupertino-everywhere`, `material-everywhere`, `cupertino-android-pragmatic`, `custom-cross-platform`. `Primary Devices` is one of: `phone-only`, `phone-and-tablet`, `phone-tablet-foldable`. No prose, no commentary on these fields.
 
 Write to `PROJECT_ROOT/PRODUCT.md`. If `.impeccable.md` existed, the loader already renamed it; merge into that content rather than starting from scratch.
 
 ## Step 5: Decide on DESIGN.md
 
-Offer `/impeccable document` either way. Two paths:
+Offer `/impeccable-native document` either way. Two paths:
 
-- **Code exists** (CSS tokens, components, a running site): "I can generate a DESIGN.md that captures your visual system (colors, typography, components) so variants stay on-brand. Want to do that now?"
-- **Pre-implementation** (empty project): "I can seed a starter DESIGN.md from five quick questions about color strategy, type direction, motion energy, and references. You can re-run once there's code, to capture the real tokens. Want to do that now?"
+- **Code exists** (existing screens, StyleSheet.create calls, a theme file): "I can generate a DESIGN.md that captures your token system (colors, typography, spacing, shadows) as a `tokens.ts` shape so variants stay on-brand. Want to do that now?"
+- **Pre-implementation** (empty project): "I can seed a starter DESIGN.md from a few quick questions about color strategy, type direction, and references. You can re-run `document` once there's code to capture the real extracted tokens. Want to start the seed now?"
 
-If the user agrees, delegate to `/impeccable document` (it auto-detects scan vs seed). Load its reference and follow that flow.
+If the user agrees, load `reference/document.md` and follow that flow.
 
-If the user prefers to skip, mention they can run `/impeccable document` any time later.
+If the user prefers to skip, mention they can run `/impeccable-native document` any time later.
 
 ## Step 6: Confirm and wrap up
 
 Summarize:
 - Register captured (brand / product)
+- Platform fidelity stance and primary devices
 - What was written (PRODUCT.md, DESIGN.md, or both)
-- The 3-5 strategic principles from PRODUCT.md that will guide future work
-- If DESIGN.md is pending, remind the user how to generate it later
+- The 3–5 design principles from PRODUCT.md that will guide future work
+- If DESIGN.md is pending, remind the user: `/impeccable-native document`
 
-**Critical: re-run the loader to refresh session context.** After writing PRODUCT.md, run `node .cursor/skills/impeccable-native/scripts/load-context.mjs` one final time and let its full JSON output land in conversation. This ensures subsequent commands in this session use the freshly-written PRODUCT.md, not a stale earlier version.
+**Critical: re-run the loader to refresh session context.** After writing PRODUCT.md, run `node .cursor/skills/impeccable-native/scripts/load-context.mjs` one final time and let its full JSON output land in conversation. This ensures subsequent commands in this session use the freshly-written PRODUCT.md, not a stale version.
 
-If teach was invoked as a blocker by another impeccable command (e.g. the user ran `/impeccable polish` with no PRODUCT.md), resume that original task now with the fresh context.
+If teach was invoked as a blocker by another impeccable-native command (e.g. the user ran `/impeccable-native audit` with no PRODUCT.md), resume that original task now with the fresh context.
 
 Optionally ask the user directly to clarify what you cannot infer. Ask whether they'd like a brief summary of PRODUCT.md appended to .cursorrules for easier agent reference. If yes, append a short **Design Context** pointer section there.
