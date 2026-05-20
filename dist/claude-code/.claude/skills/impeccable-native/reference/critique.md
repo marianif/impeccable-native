@@ -1,26 +1,27 @@
 ### Purpose
 
-Resolve one stable target, run two independent assessments, synthesize a design critique, persist a snapshot, and ask the user what to improve next. The chat response is the primary deliverable; the snapshot is an archive/backlog for future commands.
+Resolve one stable target, run two independent assessments, synthesize a design critique for a React Native / Expo surface, persist a snapshot, and ask the user what to improve next. The chat response is the primary deliverable; the snapshot is an archive/backlog for future commands.
+
+Before assessing: confirm the flavor detector has run for this session (`node .claude/skills/impeccable-native/scripts/detect-rn-flavor.mjs`) and that `load-context.mjs` has surfaced PRODUCT.md + DESIGN.md. `Platform Fidelity` and `Primary Devices` from PRODUCT.md set the bar for what counts as a finding.
 
 ### Hard Invariants
 
-- Assessment A (design review) and Assessment B (detector/browser evidence) are both required.
-- Assessment A must finish before detector findings enter the parent synthesis context. Detector output is deterministic, but it still anchors judgment.
+- Assessment A (design review) and Assessment B (implementation evidence) are both required.
+- Assessment A must finish before implementation findings enter the parent synthesis context. Code-level evidence is concrete, but it still anchors judgment.
 - If sub-agents are unavailable, fall back sequentially: finish and record Assessment A first, then run Assessment B, then synthesize.
-- A skipped detector is a failed critique run unless `detect.mjs` is missing or crashes after a real attempt.
-- Viewable targets require browser inspection when available.
-- Any local server started only for critique visualization must run in the background, have a recorded stop method, and be stopped before final reporting unless the user asks to keep it.
-- Do not claim a user-visible overlay exists unless script injection succeeded and the detector ran in the page.
+- A skipped implementation scan is a failed critique run unless the scripts are missing or crash after a real attempt.
+- **Platform parity is non-negotiable** (Constitution Principle IV). Visual inspection must cover iOS Simulator **and** Android Emulator. A single-platform critique is incomplete and must be reported as such.
+- Any simulator/emulator process started for screenshotting must be left in the state the user expects (already-running stays running; freshly booted by you gets shut down or noted), and the action recorded in Run Notes.
 
 ### Setup
 
-1. **Resolve the target** to a concrete file path or URL. Prefer a source path over a dev-server URL when both identify the same surface; ports drift, paths do not.
-   - "the homepage" -> `site/pages/index.astro` or `index.html`
-   - "the settings modal" -> the primary component file
-   - "this page" -> the current URL or source file
+1. **Resolve the target** to a concrete file path. Prefer the component / screen source over a route name when both identify the same surface; routes are renamed, paths are stabler.
+   - "the home tab" → `app/(tabs)/index.tsx` (Expo Router) or `src/screens/HomeScreen.tsx`
+   - "the settings sheet" → the primary component file (`components/SettingsSheet.tsx`)
+   - "this screen" → the screen file currently rendered in the sim
 2. **Compute the slug**:
    ```bash
-   node .claude/skills/impeccable-native/scripts/critique-storage.mjs slug "<resolved-path-or-url>"
+   node .claude/skills/impeccable-native/scripts/critique-storage.mjs slug "<resolved-path>"
    ```
    Keep it. If the command exits non-zero, skip persistence and trend for this run, but continue the critique.
 3. **Read `.impeccable/critique/ignore.md`** if it exists. Drop matching findings silently; it is the only prior-run input critique consumes.
@@ -32,71 +33,88 @@ Delegate Assessment A and Assessment B to separate sub-agents when possible. The
 <codex>
 Codex sub-agent gate:
 - If `spawn_agent` is exposed and the user explicitly allowed sub-agents, delegation, or parallel agent work, spawn A and B immediately.
-- If `spawn_agent` is exposed but the user did not explicitly allow sub-agents, ask exactly once: "Impeccable critique is designed to run two independent sub-agents for an unanchored assessment. May I use sub-agents for this critique?" Then stop until the user answers.
+- If `spawn_agent` is exposed but the user did not explicitly allow sub-agents, ask exactly once: "impeccable-native critique is designed to run two independent sub-agents for an unanchored assessment. May I use sub-agents for this critique?" Then stop until the user answers.
 - If allowed, spawn A and B. If declined, run sequentially and report `Assessment independence: degraded (sub-agents declined by user)`.
 - If `spawn_agent` is not exposed, do not ask; run sequentially and report `Assessment independence: degraded (spawn_agent unavailable in this session)`.
 - If spawning fails after permission, run sequentially and report `Assessment independence: degraded (sub-agent spawn failed: <exact error>)`.
-Prefer `fork_context: false` with self-contained prompts containing cwd, target, live URL, references, product context, and output contract. If using `fork_context: true`, omit `agent_type`, `model`, and `reasoning_effort`.
+Prefer `fork_context: false` with self-contained prompts containing cwd, target, sim/emulator state, references, PRODUCT.md + DESIGN.md, and output contract. If using `fork_context: true`, omit `agent_type`, `model`, and `reasoning_effort`.
 </codex>
-
-If browser automation is available, each assessment creates its own new tab. Never reuse an existing tab, even if it is already at the right URL.
 
 ### Assessment A: Design Review
 
-Read relevant source files and visually inspect the live page when browser automation is available. Think like a design director.
+Read the target source file and its primary collaborators (theme provider, navigation host, the screens that link in). Pair source reading with simulator screenshots from both platforms.
 
-Evaluate:
-- **AI slop**: Would someone believe "AI made this" immediately? Check all DON'T guidance from the parent Impeccable skill.
-- **Holistic design**: hierarchy, IA, emotional fit, discoverability, composition, typography, color, accessibility, states, copy, and edge cases.
-- **Cognitive load**: consult [cognitive-load](cognitive-load.md); report checklist failures and decision points with >4 visible options.
-- **Emotional journey**: peak-end rule, emotional valleys, reassurance at high-stakes moments.
-- **Nielsen heuristics**: consult [heuristics-scoring](heuristics-scoring.md); score all 10 heuristics 0-4.
-
-Return: AI slop verdict, heuristic scores, cognitive load, emotional journey, 2-3 strengths, 3-5 priority issues, persona red flags, minor observations, and provocative questions.
-
-### Assessment B: Detector + Browser Evidence
-
-Run the bundled detector and browser visualization evidence. Assessment B is mandatory and must remain isolated from Assessment A until both are complete.
-
-CLI scan:
+**Capture screenshots first** (one set per platform; light + dark; default font scale + 2× Dynamic Type if Adaptive is in scope):
 ```bash
-node .claude/skills/impeccable-native/scripts/detect.mjs --json [--fast] [target]
+node .claude/skills/impeccable-native/scripts/screenshot.mjs --platform ios --slug <slug>
+node .claude/skills/impeccable-native/scripts/screenshot.mjs --platform android --slug <slug>
+```
+If `screenshot.mjs` is missing or fails for one platform, capture the other and report the gap. Do not synthesize without at least one platform's imagery.
+
+Evaluate, thinking like a design director:
+
+- **AI slop**: would someone believe "AI made this" immediately? Check all DON'T guidance from the parent impeccable-native skill (gradient buttons, purple-to-pink, generic Material 3 defaults, identical card grids, bounce-on-everything, etc.).
+- **Mobile-native fit**: thumb-zone reachability, primary action within thumb arc, gesture conflicts, system back behavior on Android, FAB / hamburger / modal misuse, bottom-sheet appropriateness.
+- **Holistic design**: hierarchy, IA, emotional fit, discoverability, composition, typography, color, states (loading / empty / error / success), copy, edge cases (long names, slow network, offline).
+- **Cognitive load**: consult [cognitive-load](cognitive-load.md); report checklist failures and any decision point with >4 visible options on screen.
+- **Emotional journey**: peak-end rule, emotional valleys at high-stakes moments (paywall, delete, sign-out, permissions priming), reassurance moments.
+- **Nielsen heuristics**: consult [heuristics-scoring](heuristics-scoring.md); score all 10 heuristics 0–4 with mobile interpretation (e.g. *Visibility of System Status* covers loading skeletons, pull-to-refresh feedback, optimistic UI; *User Control and Freedom* covers swipe-to-go-back on iOS, Android hardware back, undo toasts).
+
+Return: AI slop verdict, heuristic scores, cognitive load summary, emotional journey notes, 2–3 strengths, 3–5 priority issues, persona red flags, minor observations, and provocative questions. Reference specific screenshots by name where relevant.
+
+### Assessment B: Implementation Evidence
+
+Run code-level scans on the target file (and its directly imported children, when small enough to include). Assessment B is mandatory and must remain isolated from Assessment A until both are complete.
+
+Run the available scanners:
+```bash
+node .claude/skills/impeccable-native/scripts/a11y-audit.mjs --json <target>
+node .claude/skills/impeccable-native/scripts/platform-parity.mjs --json <target>
+node .claude/skills/impeccable-native/scripts/extract-tokens.mjs --json --dry-run <target>
 ```
 
-- Pass markup files/directories as `[target]`; do not pass CSS-only files.
-- For URLs, skip CLI scan and use browser visualization.
-- For 200+ scannable files, use `--fast`; for 500+, narrow scope or ask.
-- Exit code 0 = clean; 2 = findings.
-- If the detector entrypoint is missing or fails to load, report deterministic scan unavailable and continue with browser/manual review.
+- `a11y-audit.mjs` — static analysis: every `Pressable` / `TouchableOpacity` has `accessibilityRole` + `accessibilityLabel`; every `Image` either declares `accessibilityLabel` or is hidden; no labels on purely decorative elements.
+- `platform-parity.mjs` — flags iOS-only `shadowColor` without `elevation`, missing `Platform.select` on platform-divergent props, `KeyboardAvoidingView` without per-platform `behavior`, iOS-only haptics, `BackHandler` missing where Android back should close a modal/sheet.
+- `extract-tokens.mjs --dry-run` — surfaces duplicated literals (colors, sizes, durations) in the file that should route through `tokens.ts`.
 
-Browser visualization is required for a viewable target when browser automation is available. Use a localhost dev/static URL for local files; avoid `file://` unless the available browser explicitly supports this workflow. Overlay flow:
+If any scanner is missing or crashes, report the deterministic scan unavailable for that dimension and continue with manual review of the same checks.
 
-1. Create a fresh tab and navigate.
-2. Preflight mutable injection by setting `document.title` and appending a `<script>` tag. Read-only evaluate APIs do not count.
-3. If mutation is unavailable, skip live server, browser presentation, and injection; report fallback signal.
-4. If mutation is available, start `node .claude/skills/impeccable-native/scripts/live-server.mjs --background`, present the browser if supported, label `[Human]`, scroll top, inject `http://localhost:PORT/detect.js`, wait 2-3 seconds, read `impeccable` console messages, then stop the live server.
-5. For multi-view targets, inject on 3-5 representative pages.
+**Manual checks** (the scanners don't cover everything):
+
+- Inline `style={{ ... }}` literals inside `FlatList` / `SectionList` `renderItem`.
+- `keyExtractor` present and stable (not array index for mutable lists).
+- Animations: Reanimated worklets via `useSharedValue` + `useAnimatedStyle`, or `Animated` with `useNativeDriver: true` for `transform` / `opacity` only. Layout-property animation (`width` / `height` / `top` / `padding`) is a finding.
+- `useReducedMotion()` consumed by every animated component.
+- `useColorScheme()` called once at the provider, not scattered inline.
+- Custom font loading gated by splash so first paint isn't system font.
+- Safe areas: `useSafeAreaInsets()` or `SafeAreaView` with explicit `edges`, no hardcoded `paddingTop: 44`.
+
+**Simulator-driven probes** (run the surface, don't just read it):
+
+- **VoiceOver pass on iOS**: enable VoiceOver, swipe through the screen, verify reading order and that every interactive element announces role + label + state.
+- **TalkBack pass on Android**: enable TalkBack, repeat. Note any iOS-only or Android-only a11y findings.
+- **Dynamic Type 2× on iOS** / **font scale Large on Android**: layout holds, nothing clips.
+- **Light → Dark toggle**: every surface flips; no near-white surfaces on OLED, no unreadable text on dark backgrounds.
+- **Reduce Motion on iOS** / **Remove Animations on Android**: animations substitute or skip; no broken transitions.
+- **Android hardware/gesture back**: closes modals/sheets correctly; does not leak out of the app from a deep stack.
+- **Keyboard avoidance**: open the form, focus each input, confirm visibility above the keyboard on both platforms.
+
+Return: scanner JSON findings (file:line), manual checks pass/fail, simulator-probe results per platform, false positives, and any platform left unverified.
+
+After Assessment B returns usable scanner findings, reuse them. Do not rerun the scanners in the parent unless Assessment B failed, was truncated, or omitted file locations or rule names.
 
 <codex>
-Codex Browser note: Use the Browser skill. Do not spend a Browser attempt on `file://`. Only call `visibility.set(true)` after mutable script injection is confirmed for the `[Human]` overlay path; verify with `get()`. Use `tab.dev.logs({ filter: "impeccable" })` for console results. Its Playwright `evaluate(...)` surface is read-only; do not rely on it for mutation.
-</codex>
-
-Return: CLI findings JSON/counts, browser console findings if applicable, false positives, and skipped/failed browser steps with concrete reasons.
-
-After Assessment B returns usable CLI findings, reuse them. Do not rerun `detect.mjs` in the parent unless Assessment B failed, was truncated, or omitted count, rule names, or file locations.
-
-<codex>
-Codex failure accounting: final Run Notes must include target slug, ignore list, assessment independence, CLI detector, browser visibility, overlay injection, live-server cleanup, temp-file cleanup, and any fallback signal used. Do not run repo status checks, late API spelunking, or unrelated verification after the report is assembled.
+Codex failure accounting: final Run Notes must include target slug, ignore list, assessment independence, scanners run (a11y, parity, tokens), screenshots captured per platform, simulator probes per platform, and any fallback signal used. Do not run repo status checks, late spelunking, or unrelated verification after the report is assembled.
 </codex>
 
 ### Generate Combined Critique Report
 
-Synthesize both assessments into a single report. Do NOT simply concatenate. Weave the findings together, noting where the LLM review and detector agree, where the detector caught issues the LLM missed, and where detector findings are false positives.
+Synthesize both assessments into a single report. Do NOT simply concatenate. Weave the findings together, noting where the design review and code scan agree, where the scanner caught issues the review missed, and where scanner findings are false positives.
 
 The chat response is the primary user-facing deliverable. Present the full structured critique below in chat; do not replace it with a summary and a link. The persisted snapshot is only an archive/backlog for later commands.
 
 <codex>
-Codex final-answer note: `$impeccable critique` produces a report artifact, so the final chat response should intentionally exceed the usual concise close-out style. Do not title the final response "Critique Summary" unless the user explicitly asked for a summary.
+Codex final-answer note: `$impeccable-native critique` produces a report artifact, so the final chat response should intentionally exceed the usual concise close-out style. Do not title the final response "Critique Summary" unless the user explicitly asked for a summary.
 </codex>
 
 Structure your feedback as a design director would:
@@ -104,93 +122,107 @@ Structure your feedback as a design director would:
 #### Design Health Score
 > *Consult [heuristics-scoring](heuristics-scoring.md)*
 
-Present the Nielsen's 10 heuristics scores as a table:
+Present the Nielsen's 10 heuristics scores as a table, interpreted for mobile:
 
 | # | Heuristic | Score | Key Issue |
 |---|-----------|-------|-----------|
-| 1 | Visibility of System Status | ? | [specific finding or "n/a" if solid] |
-| 2 | Match System / Real World | ? | |
-| 3 | User Control and Freedom | ? | |
-| 4 | Consistency and Standards | ? | |
-| 5 | Error Prevention | ? | |
-| 6 | Recognition Rather Than Recall | ? | |
-| 7 | Flexibility and Efficiency | ? | |
-| 8 | Aesthetic and Minimalist Design | ? | |
-| 9 | Error Recovery | ? | |
-| 10 | Help and Documentation | ? | |
+| 1 | Visibility of System Status | ? | [skeleton/spinner/optimistic UI gap, or "n/a" if solid] |
+| 2 | Match System / Real World | ? | [platform-fidelity stance honored? iOS-isms on Android?] |
+| 3 | User Control and Freedom | ? | [undo / swipe-back / Android back / cancel paths] |
+| 4 | Consistency and Standards | ? | [tokens consumed? platform primitives used?] |
+| 5 | Error Prevention | ? | [destructive actions guarded? form validation early?] |
+| 6 | Recognition Rather Than Recall | ? | [icon-only nav, hidden gestures, undiscoverable affordances] |
+| 7 | Flexibility and Efficiency | ? | [haptics, gestures, shortcuts for repeat users] |
+| 8 | Aesthetic and Minimalist Design | ? | [AI-slop tells, decoration without purpose] |
+| 9 | Error Recovery | ? | [error states, offline state, retry affordance] |
+| 10 | Help and Documentation | ? | [empty states, first-run, contextual hints] |
 | **Total** | | **??/40** | **[Rating band]** |
 
-Be honest with scores. A 4 means genuinely excellent. Most real interfaces score 20-32.
+Be honest with scores. A 4 means genuinely excellent. Most real interfaces score 20–32.
+
+#### Platform Coverage
+
+State clearly which platforms were inspected and how:
+
+- **iOS**: simulator [device], system version, light + dark, default + 2× Dynamic Type, VoiceOver pass [yes/no], Reduce Motion pass [yes/no]
+- **Android**: emulator [device], API level, light + dark, default + Large font scale, TalkBack pass [yes/no], Remove Animations pass [yes/no]
+
+If only one platform was inspected, **this critique is incomplete by Constitution Principle IV**. Say so plainly and recommend re-running with the second platform.
 
 #### Anti-Patterns Verdict
 
-**Start here.** Does this look AI-generated?
+**Start here.** Does this look AI-generated, or like a mobile app made of platform shortcuts?
 
-**LLM assessment**: Your own evaluation of AI slop tells. Cover overall aesthetic feel, layout sameness, generic composition, missed opportunities for personality.
+**Design review assessment**: your own evaluation of AI slop tells. Cover overall aesthetic feel, layout sameness, generic composition, missed opportunities for personality, mobile-native fit (thumb zone, gestures, sheet vs modal vs full-screen).
 
-**Deterministic scan**: Summarize what the automated detector found, with counts and file locations. Note any additional issues the detector caught that you missed, and flag any false positives.
+**Implementation scan**: summarize what the scanners found, with counts and file:line locations. Note any additional issues caught (missing `accessibilityRole`, iOS-only shadow, duplicated literals) and flag false positives.
 
-**Visual overlays** (if injection succeeded): Tell the user that overlays are now visible in the **[Human]** tab in their browser, highlighting the detected issues. Summarize what the console output reported. If browser visualization was attempted but injection failed, say that no reliable user-visible overlay is available and report the fallback signal instead.
+**Simulator probes**: report VoiceOver / TalkBack / Dynamic Type / Reduce Motion / system-back outcomes per platform. If a probe was skipped, say which and why.
 
 #### Overall Impression
-A brief gut reaction: what works, what doesn't, and the single biggest opportunity.
+A brief gut reaction: what works, what doesn't, and the single biggest opportunity. Frame it for a thumb in motion, not a mouse on a 24-inch display.
 
 #### What's Working
-Highlight 2-3 things done well. Be specific about why they work.
+Highlight 2–3 things done well. Be specific about why they work (the token discipline, the haptic moment, the empty state, the platform-correct shadow).
 
 #### Priority Issues
-The 3-5 most impactful design problems, ordered by importance.
+The 3–5 most impactful design problems, ordered by importance.
 
-For each issue, tag with **P0-P3 severity** (consult [heuristics-scoring](heuristics-scoring.md) for severity definitions):
-- **[P?] What**: Name the problem clearly
-- **Why it matters**: How this hurts users or undermines goals
-- **Fix**: What to do about it (be concrete)
-- **Suggested command**: Which command could address this (from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable harden, /impeccable layout, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable shape, /impeccable teach, /impeccable typeset)
+For each issue, tag with **P0–P3 severity** (consult [heuristics-scoring](heuristics-scoring.md) for severity definitions; mobile-specific: P0 includes "fails on one platform but not the other" when the stance demands parity):
+
+- **[P?] What**: name the problem clearly
+- **Where**: component / file:line, and platform (iOS / Android / both)
+- **Why it matters**: how this hurts users or undermines goals (which persona, which moment, which platform)
+- **Fix**: what to do about it — name the specific RN primitive, hook, or token
+- **Suggested command**: which impeccable-native command could address this (from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable harden, /impeccable layout, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable shape, /impeccable teach, /impeccable typeset)
 
 #### Persona Red Flags
 > *Consult [personas](personas.md)*
 
-Auto-select 2-3 personas most relevant to this interface type (use the selection table in the reference). If `CLAUDE.md` contains a `## Design Context` section from `impeccable teach`, also generate 1-2 project-specific personas from the audience/brand info.
+Auto-select 2–3 personas most relevant to this surface (use the selection table in the reference). If PRODUCT.md contains a `## Design Context` section from `impeccable-native teach`, also generate 1–2 project-specific personas from the audience/brand info.
 
-For each selected persona, walk through the primary user action and list specific red flags found:
+For each selected persona, walk through the primary user action and list specific red flags found. Be mobile-specific:
 
-**Alex (Power User)**: No keyboard shortcuts detected. Form requires 8 clicks for primary action. Forced modal onboarding. High abandonment risk.
+**Alex (Power User)**: no swipe-to-archive on the list, no long-press context menu, no haptic on key actions. Primary action requires 3 taps and a modal when a swipe action would do it in one.
 
-**Jordan (First-Timer)**: Icon-only nav in sidebar. Technical jargon in error messages ("404 Not Found"). No visible help. Will abandon at step 2.
+**Jordan (First-Timer)**: icon-only bottom tabs (no labels), hidden onboarding behind a horizontal scroll, permissions priming missing before the system prompt — likely to deny camera access permanently.
+
+**Sam (Accessibility-First)**: bottom sheet has no `accessibilityRole="dialog"`, VoiceOver reads the dim overlay as a button, focus does not trap inside the sheet, Dynamic Type 2× clips the CTA off-screen on iPhone SE.
 
 Be specific. Name the exact elements and interactions that fail each persona. Don't write generic persona descriptions; write what broke for them.
 
 #### Minor Observations
-Quick notes on smaller issues worth addressing.
+Quick notes on smaller issues worth addressing — copy nits, spacing inconsistencies, missing haptics on a key moment, a token that could be reused, a `numberOfLines` that should be `2` not `1`.
 
 #### Questions to Consider
 Provocative questions that might unlock better solutions:
-- "What if the primary action were more prominent?"
-- "Does this need to feel this complex?"
-- "What would a confident version of this look like?"
+- "What if the primary action were a bottom-sheet confirm with haptic, instead of a destructive modal?"
+- "Does this screen need to be a screen, or could it be a sheet pushed from the prior one?"
+- "What does this look like on a one-handed commute, on Android, with Large font scale?"
 
 <codex>
 #### Run Notes
-Keep this compact. Include status for target slug, ignore list, assessment independence, CLI detector, browser visibility, overlay injection, live server cleanup, and temp-file cleanup. For failed or skipped steps, give the concrete observed reason and the fallback signal used. In the final chat response, also include snapshot write and trend read status after persistence has run.
+Keep this compact. Include status for target slug, ignore list, assessment independence, scanners run (a11y, parity, tokens), screenshots captured per platform, simulator probes per platform (VoiceOver/TalkBack, Dynamic Type, Reduce Motion, system back, keyboard avoidance), and temp-file cleanup. For failed or skipped steps, give the concrete observed reason and the fallback signal used. In the final chat response, also include snapshot write and trend read status after persistence has run.
 
 Codex Run Notes are final-chat only. Do not include this section in the persisted snapshot body, because persistence, trend read, and temp cleanup happen after the snapshot write and would otherwise archive stale status such as "pending after persistence."
 </codex>
 
 **Remember**:
 - Be direct. Vague feedback wastes everyone's time.
-- Be specific. "The submit button," not "some elements."
-- Say what's wrong AND why it matters to users.
-- Give concrete suggestions. Cut "consider exploring..." entirely.
-- Prioritize ruthlessly. If everything is important, nothing is.
-- Don't soften criticism. Developers need honest feedback to ship great design.
+- Be specific. "The submit button on iOS, line 142," not "some elements."
+- Say what's wrong AND why it matters to users on a phone.
+- Give concrete suggestions. Name the primitive, hook, or token. Cut "consider exploring..." entirely.
+- Prioritize ruthlessly. If everything is P0, nothing is.
+- Don't soften criticism. Developers need honest feedback to ship great mobile design.
+- **Never score Platform Fidelity from one platform only.** If you couldn't inspect both, say so and call it incomplete.
 
 ### Persist the Snapshot
 
-Once the report above is finalized, write it to `.impeccable/critique/` so the user can refer back, and so `/impeccable polish` can pick up the priority issues without a copy-paste.
+Once the report above is finalized, write it to `.impeccable/critique/` so the user can refer back, and so `/impeccable-native polish` can pick up the priority issues without a copy-paste.
 
 Skip this step if the Setup slug was null (vague or root-level target).
 
-1. **Write the body to a temp file** so you can pipe it to the helper. Use the full critique report (heuristic table, anti-patterns verdict, priority issues, persona red flags, minor observations, and questions), but stop before the "Ask the User" / "Recommended Actions" sections that come later.
+1. **Write the body to a temp file** so you can pipe it to the helper. Use the full critique report (heuristic table, platform coverage, anti-patterns verdict, priority issues, persona red flags, minor observations, and questions), but stop before the "Ask the User" / "Recommended Actions" sections that come later.
 
    <codex>
    Codex: exclude Run Notes from the temp body file; Run Notes are final-chat only because persistence, trend read, and temp cleanup happen after the snapshot write.
@@ -198,10 +230,10 @@ Skip this step if the Setup slug was null (vague or root-level target).
 
 2. **Pass the structured metadata** through `IMPECCABLE_CRITIQUE_META` (JSON), then run the write command:
    ```bash
-   IMPECCABLE_CRITIQUE_META='{"target":"<user phrasing>","total_score":<n>,"p0_count":<n>,"p1_count":<n>}' \
+   IMPECCABLE_CRITIQUE_META='{"target":"<user phrasing>","total_score":<n>,"p0_count":<n>,"p1_count":<n>,"platforms":["ios","android"]}' \
      node .claude/skills/impeccable-native/scripts/critique-storage.mjs write <slug> <body-file>
    ```
-   The helper prints the absolute path it wrote.
+   The helper prints the absolute path it wrote. If only one platform was inspected, pass that platform alone and mark `"incomplete": true`.
 
 3. **Delete the temp body file** after the write attempt completes, whether the write succeeded or failed. If deletion fails, mention `temp-file cleanup failed: <reason>` briefly in the final output, but do not block the critique.
 
@@ -226,22 +258,22 @@ This is fire-and-forget. Do not show the user the helper's JSON output; only the
 
 Ask questions along these lines (adapt to the specific findings; do NOT ask generic questions):
 
-1. **Priority direction**: Based on the issues found, ask which category matters most to the user right now. For example: "I found problems with visual hierarchy, color usage, and information overload. Which area should we tackle first?" Offer the top 2-3 issue categories as options.
+1. **Priority direction**: based on the issues found, ask which category matters most to the user right now. For example: "I found problems with platform parity (iOS-only shadows, missing TalkBack labels), Dynamic Type clipping, and a FAB that's doing secondary-action work. Which area should we tackle first?" Offer the top 2–3 issue categories as options.
 
-2. **Design intent**: If the critique found a tonal mismatch, ask whether it was intentional. For example: "The interface feels clinical and corporate. Is that the intended tone, or should it feel warmer/bolder/more playful?" Offer 2-3 tonal directions as options based on what would fix the issues found.
+2. **Design intent**: if the critique found a tonal or platform-stance mismatch, ask whether it was intentional. For example: "The interface uses Material ripple on every Pressable but PRODUCT.md says `cupertino-everywhere`. Is the stance moving toward custom-cross-platform, or should we strip the ripples?" Offer 2–3 directions tied to the findings.
 
-3. **Scope**: Ask how much the user wants to take on. For example: "I found N issues. Want to address everything, or focus on the top 3?" Offer scope options like "Top 3 only", "All issues", "Critical issues only".
+3. **Scope**: ask how much the user wants to take on. For example: "I found N issues across iOS and Android. Want to address everything, focus on P0 + P1, or fix only the platform-parity gaps first?" Offer scope options.
 
-4. **Constraints** (optional; only ask if relevant): If the findings touch many areas, ask if anything is off-limits. For example: "Should any sections stay as-is?" This prevents the plan from touching things the user considers done.
+4. **Constraints** (optional; only ask if relevant): if the findings touch many areas, ask if anything is off-limits. For example: "Should any screens stay as-is for this release?" This prevents the plan from touching things the user considers done.
 
 **Rules for questions**:
 - Every question must reference specific findings from the report. Never ask generic "who is your audience?" questions.
-- Keep it to 2-4 questions maximum. Respect the user's time.
+- Keep it to 2–4 questions maximum. Respect the user's time.
 - Offer concrete options, not open-ended prompts.
-- If findings are straightforward (e.g., only 1-2 clear issues), skip questions and go directly to Recommended Actions.
+- If findings are straightforward (e.g. only 1–2 clear issues), skip questions and go directly to Recommended Actions.
 
 <codex>
-Codex final-question gate: The user-visible response must either include the targeted questions or explicitly say `Questions skipped: <reason>` because the findings were straightforward. Each question must include 2-3 concrete answer options tied to the actual critique findings. Do not end with only open-ended questions.
+Codex final-question gate: The user-visible response must either include the targeted questions or explicitly say `Questions skipped: <reason>` because the findings were straightforward. Each question must include 2–3 concrete answer options tied to the actual critique findings. Do not end with only open-ended questions.
 </codex>
 
 ### Recommended Actions
@@ -252,22 +284,22 @@ Codex final-question gate: The user-visible response must either include the tar
 
 List recommended commands in priority order, based on the user's answers:
 
-1. **`/command-name`**: Brief description of what to fix (specific context from critique findings)
-2. **`/command-name`**: Brief description (specific context)
+1. **`/impeccable-native <command>`**: brief description of what to fix (specific context from critique findings, e.g. "harden the New-Item bottom sheet — Android back leaks, focus doesn't trap, no haptic on confirm").
+2. **`/impeccable-native <command>`**: brief description (specific context).
 ...
 
 **Rules for recommendations**:
 - Only recommend commands from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable harden, /impeccable layout, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable shape, /impeccable teach, /impeccable typeset
 - Order by the user's stated priorities first, then by impact
 - Each item's description should carry enough context that the command knows what to focus on
-- Map each Priority Issue to the appropriate command
+- Map each Priority Issue to the appropriate command (e.g. platform-parity issues → `harden` or `adapt`; AI-slop → `quieter` or `bolder`; Dynamic Type clipping → `adapt`; token leakage → `extract`)
 - Skip commands that would address zero issues
 - If the user chose a limited scope, only include items within that scope
 - If the user marked areas as off-limits, exclude commands that would touch those areas
-- End with `/impeccable polish` as the final step if any fixes were recommended
+- End with `/impeccable-native polish` as the final step if any fixes were recommended
 
 After presenting the summary, tell the user:
 
 > You can ask me to run these one at a time, all at once, or in any order you prefer.
 >
-> Re-run `/impeccable critique` after fixes to see your score improve.
+> Re-run `/impeccable-native critique` after fixes to see your score improve — and re-verify on both iOS and Android.
