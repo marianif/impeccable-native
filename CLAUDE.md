@@ -58,3 +58,8 @@ Bump when skill content changes (`skill/`, reference files, command metadata).
 - No browser extension (`extension/` removed)
 - No live browser overlay scripts (removed; use `screenshot.mjs` for simulator iteration)
 - Only two harness targets: `.claude/` and `.cursor/`
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
