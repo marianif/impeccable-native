@@ -83,10 +83,10 @@ These are consulted by command references, not user-invocable themselves.
 |------|:------:|--------|-------|
 | `codex.md` | ✅ | Significant | Palette/mock/approval gates kept. Step E inventory rewritten for RN surfaces (Skia, react-native-svg, expo-image, expo-linear-gradient, expo-blur, Reanimated, icon library, multi-density raster). Step F asset slicing covers app icon + splash + multi-density. Vector-first preference made explicit. |
 | `spatial-design.md` | ✅ | Significant | Rewritten for RN: token-step naming (`space['4']`), Yoga column-default, `gap` with RN 0.71 fallback, `FlatList numColumns` for tablet, the squint test, hierarchy through multiple dimensions, **safe area composition** (`inset + token`), touch targets via padding vs `hitSlop`, optical adjustments, **platform-split shadows** with low-alpha rule. |
-| `typography.md` | ⬜ | Significant | Modular scale principle survives. Swap `rem` scale for RN `fontSize` numeric values, add Dynamic Type / `allowFontScaling` notes, platform default fonts. |
-| `motion-design.md` | ⬜ | Significant | Duration tables transfer. Swap CSS `cubic-bezier` for Reanimated `Easing.out(Easing.quart)` / `withSpring` configs. Add 120Hz ProMotion note. |
-| `color-and-contrast.md` | ⬜ | Significant | OKLCH principles transfer (in design thinking). Add note: emit hex/rgba to tokens.ts; RN StyleSheet doesn't accept OKLCH. Light/dark token sets. |
-| `interaction-design.md` | ⬜ | Near-total | Eight states include hover/focus-ring (don't exist on touch). Rewrite for touch / long-press / swipe / pan / pinch / disabled / loading / error / success states, plus haptic feedback per state. |
+| `typography.md` | ✅ | Significant | Rewritten for RN: 5-size role scale in points, `lineHeight` as total points (not multiplier), `tokens.type` role-named, system font defaults (SF Pro / Roboto), `expo-font` + `@expo-google-fonts` loading with splash-screen gate, iOS/Android weight/italic divergence table, **Dynamic Type / `allowFontScaling` deep dive** with `maxFontSizeMultiplier` cap pattern, `fontVariant: ['tabular-nums']`, all-caps tracking, role-not-value token naming. |
+| `motion-design.md` | ✅ | Significant | Rewritten for RN: duration tokens in ms, Reanimated `Easing.out(Easing.quart)` / `Easing.bezier` curves, **new Springs section** with damping/stiffness presets table, **new 120Hz ProMotion section**, Premium Materials swapped to RN toolkit (Reanimated layout animations, Skia, MaskedView, expo-blur, expo-haptics), stagger via `withDelay` + declarative `FadeInDown.delay()`, `useReducedMotion` with substitute-or-skip patterns, scroll-driven via `useAnimatedScrollHandler`, JS-thread anti-pattern call-out. |
+| `color-and-contrast.md` | ✅ | Significant | Rewritten for RN: OKLCH-think-emit-hex workflow with source comments, tinted-neutrals example pinned to a brand hue, RN palette structure table (accent/surface/text/semantic/border), parallel `light` + `dark` token sets in `tokens.ts`, `useColorScheme` + `useTheme` hook pattern (no scattered ternaries), **iOS tint color** and **Android Material You** platform-fidelity stances, contrast against emitted hex, OLED `#000` warning, alpha-as-token pattern, status bar + Android nav bar theming. |
+| `interaction-design.md` | ✅ | Near-total | Rewritten for RN: mobile interactive states matrix (no hover, focus only for iPad/tvOS/external input), Pressable patterns (color swap vs scale spring), **haptics table with peak-not-end rule**, touch target spacing, gesture discoverability (partial reveal / coach marks / visible fallback), gesture patterns (swipe rows, PTR, pinch, pan-to-dismiss, Android back), form design (labels-not-placeholders, `keyboardType` / `autoComplete` / `textContentType`, `KeyboardAvoidingView`), optimistic UI + skeleton-vs-spinner, **sheet/modal hierarchy** (inline → context menu → bottom sheet → modal stack → Alert), `@gorhom/bottom-sheet` snap points + grabber, undo-over-confirm with undo toast pattern, accessibility (`accessibilityRole` / `Label` / `Hint` / `State`, decorative vs functional, focus order, VoiceOver-vs-TalkBack differences), external input (keyboard, Pencil, Switch Control, Voice Control). |
 | `responsive-design.md` | ⬜ | TBD | `min-width` queries, `clamp()`, `@media (pointer: coarse)` — none of this exists in RN. Decide when we get to `adapt.md` whether to keep this file (general adaptive thinking) or fold its content into `adapt.md`. |
 | `ux-writing.md` | 🔵 | None | Button labels, error messages, microcopy. Platform-agnostic. Verify only. |
 
@@ -109,10 +109,10 @@ These are consulted by command references, not user-invocable themselves.
 
 ## Tally
 
-- ✅ Done: 5 (`teach`, `shape`, `craft`, `codex`, `spatial-design`)
+- ✅ Done: 9 (`teach`, `shape`, `craft`, `codex`, `spatial-design`, `typography`, `motion-design`, `color-and-contrast`, `interaction-design`)
 - 🟡 In progress: 0
 - 🔵 No-op (verify only): 5
-- ⬜ Todo: 24
+- ⬜ Todo: 20
 - ❌ Removed: 1 (`live`)
 
 **Next up:** `spatial-design.md`, then `typography.md`, then `motion-design.md`, then back to command files in dogfood order (`document` → `audit` → `critique` → refinement set → enhance set → fix set).

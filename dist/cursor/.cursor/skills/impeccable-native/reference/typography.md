@@ -4,156 +4,202 @@
 
 ### Vertical Rhythm
 
-Your line-height should be the base unit for ALL vertical spacing. If body text has `line-height: 1.5` on `16px` type (= 24px), spacing values should be multiples of 24px. This creates subconscious harmony; text and space share a mathematical foundation.
+`lineHeight` is the base unit for vertical spacing. If body text has `fontSize: 16` with `lineHeight: 24`, your `tokens.space` step that pairs with body content should be `24` (`space['6']`) or a clean multiple. Text and surrounding space sharing the same mathematical foundation creates the subconscious calm that "good typography" usually means.
+
+In RN, `lineHeight` is the *total* line box height in points, not a multiplier (`24` literal, not `1.5`). State the literal value in tokens so it's unambiguous on both platforms.
 
 ### Modular Scale & Hierarchy
 
-The common mistake: too many font sizes that are too close together (14px, 15px, 16px, 18px...). This creates muddy hierarchy.
+The common mistake on mobile: six font sizes that are too close (12, 13, 14, 15, 16, 18). The screen is too small to forgive muddy hierarchy. Use fewer sizes with more contrast — a 5-size system covers almost every mobile screen:
 
-**Use fewer sizes with more contrast.** A 5-size system covers most needs:
+| Role | Typical Size | Use Case |
+|------|--------------|----------|
+| caption | 12 | Captions, metadata, legal microcopy |
+| label | 14 | Buttons, secondary labels, list metadata |
+| body | 16 | Default reading text, list rows |
+| title | 18 | Section headings within a screen |
+| headline | 24 | Screen titles |
+| display | 36+ | Hero moments, splash, onboarding |
 
-| Role | Typical Ratio | Use Case |
-|------|---------------|----------|
-| xs | 0.75rem | Captions, legal |
-| sm | 0.875rem | Secondary UI, metadata |
-| base | 1rem | Body text |
-| lg | 1.25-1.5rem | Subheadings, lead text |
-| xl+ | 2-4rem | Headlines, hero text |
-
-Popular ratios: 1.25 (major third), 1.333 (perfect fourth), 1.5 (perfect fifth). Pick one and commit.
+Popular ratios: 1.25 (major third), 1.333 (perfect fourth), 1.5 (perfect fifth). Pick one and commit — the values above use roughly 1.33. Tokens in `tokens.ts` are stable across the project; specific screens consume them by role, never by literal size.
 
 ### Readability & Measure
 
-Use `ch` units for character-based measure (`max-width: 65ch`). Line-height scales inversely with line length: narrow columns need tighter leading, wide columns need more.
+On a 390pt-wide phone (iPhone 15), a 16pt body line at standard padding wraps around 30–40 characters — narrower than the web 65–75ch comfortable measure. Mobile readers tolerate this because thumb scrolling makes line breaks cheap. **Don't try to force 65ch on a phone** by shrinking type; let the platform's natural measure win.
 
-**Non-obvious**: Light text on dark backgrounds needs compensation on three axes, not just one. Bump line-height by 0.05–0.1, add a touch of letter-spacing (0.01–0.02em), and optionally step the body weight up one notch (regular → medium). The perceived weight drops across all three; fix all three.
+For long-form reading screens (article, FAQ, terms-of-service), cap content width on tablet with `maxWidth` so measure doesn't blow past 75ch on iPad. Use `Dimensions.get('window').width` or `useWindowDimensions` to decide.
 
-**Paragraph rhythm**: Pick either space between paragraphs OR first-line indentation. Never both. Digital usually wants space; editorial/long-form can justify indent-only.
+**Light text on dark surfaces needs compensation on three axes.** When the same type role flips for dark mode, the perceived weight drops — counter it on three fronts at once:
 
-## Font Selection & Pairing
+- Bump `lineHeight` by 1–2pt
+- Add `letterSpacing: 0.2` (or roughly 1–2% of fontSize)
+- Step the weight up one notch (`'400'` → `'500'`)
 
-The tactical selection procedure and the reflex-reject list live in [reference/brand.md](brand.md) under **Font selection procedure** and **Reflex-reject list** (loaded for brand-register tasks). The rest of this section covers the adjacent knowledge: anti-reflex corrections, system font use, and pairing rules.
+If you only adjust one, the text reads as too thin. Adjust all three.
+
+## Font Selection & Loading
 
 ### Anti-reflexes worth defending against
 
-- A technical/utilitarian brief does NOT need a serif "for warmth." Most tech tools should look like tech tools.
-- An editorial/premium brief does NOT need the same expressive serif everyone is using right now. Premium can be Swiss-modern, can be neo-grotesque, can be a literal monospace, can be a quiet humanist sans.
-- A children's product does NOT need a rounded display font. Kids' books use real type.
-- A "modern" brief does NOT need a geometric sans. The most modern thing you can do is not use the font everyone else is using.
+- A productivity app does NOT need a humanist sans "for warmth." Most productivity apps should let SF Pro / Roboto do their job.
+- An editorial app does NOT need the expressive serif everyone else is using right now. Premium can be Swiss-modern, can be a quiet humanist sans, can be a literal monospace.
+- A kids' app does NOT need a rounded display font. Real children's typography is more varied.
+- A "modern" brief does NOT need a geometric sans. The most modern thing you can do on mobile is let the platform's system font carry, and put your weight into hierarchy and density instead.
 
-**System fonts are underrated**: `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui` looks native, loads instantly, and is highly readable. Consider this for apps where performance > personality.
+### System fonts are the default
+
+On iOS, RN's `fontFamily: 'System'` (or no `fontFamily` at all) resolves to **SF Pro** with full Dynamic Type support, optical sizing across weights, and proper kerning. On Android, the equivalent default is **Roboto**.
+
+**For most product apps, this is the right answer.** SF Pro and Roboto are highly readable, ship with the OS at zero load cost, and respect every accessibility setting the user has configured. Reach for a custom font only when:
+
+- The brief is brand-led and the typography is part of the brand identity
+- A specific letterform character (a distinctive `g`, a wide italic) is doing real design work
+- The platform fidelity stance is `custom-cross-platform` and a unified font is part of that decision
+
+If you're going custom, accept the cost: load delay, fallback shift, multi-weight bundle size, and the loss of Dynamic Type's optical-size variants.
+
+### Loading custom fonts
+
+Use `expo-font` (managed) or `@expo-google-fonts/*` (managed, easier). On bare RN, link fonts via `react-native-asset` or native asset catalogs.
+
+```tsx
+// expo with @expo-google-fonts
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, InstrumentSans_400Regular, InstrumentSans_500Medium } from '@expo-google-fonts/instrument-sans';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function App() {
+  const [loaded] = useFonts({
+    'InstrumentSans-Regular': InstrumentSans_400Regular,
+    'InstrumentSans-Medium': InstrumentSans_500Medium,
+  });
+
+  useEffect(() => {
+    if (loaded) SplashScreen.hideAsync();
+  }, [loaded]);
+
+  if (!loaded) return null;
+  return <YourApp />;
+}
+```
+
+Two non-negotiables:
+
+- **Load fonts before the splash screen clears.** Otherwise text flashes the system font on first render — the RN equivalent of FOUT. Use `expo-splash-screen.preventAutoHideAsync()` and hide it only after `useFonts` returns `loaded: true`.
+- **One file per weight.** RN doesn't support variable fonts cleanly across both platforms (Android support is limited and version-dependent). Load each weight as a separate file with a distinct family name (`InstrumentSans-Regular`, `InstrumentSans-Medium`).
+
+In `tokens.type`, omit `fontFamily` for system-font roles and add it explicitly only for branded ones:
+
+```ts
+type: {
+  display:  { fontFamily: 'InstrumentSerif-Italic', fontSize: 36, lineHeight: 42, fontWeight: '400' as const },
+  body:     { fontSize: 16, lineHeight: 24, fontWeight: '400' as const }, // system default
+}
+```
+
+### Platform font reality
+
+| Aspect | iOS (SF Pro) | Android (Roboto) |
+|--------|--------------|------------------|
+| Available weights | 100, 200, 300, 400, 500, 600, 700, 800, 900 | Limited — `100`, `300`, `400`, `500`, `700`, `900`; intermediate weights snap to nearest |
+| Italic | Native italic + true italic faces | Mechanical slant on most weights |
+| Optical sizing | Yes (Dynamic Type uses size-appropriate variants) | No |
+| Numeric features | `fontVariant: ['tabular-nums']` supported | Supported on Android API 26+ |
+
+If a design depends on weight `600` looking exactly the same on both platforms, it won't. Either accept the divergence (cupertino-android-pragmatic), load a custom font with full weights on both (`custom-cross-platform`), or stick to weights that map cleanly: `400`, `500`, `700`.
 
 ### Pairing Principles
 
-**The non-obvious truth**: You often don't need a second font. One well-chosen font family in multiple weights creates cleaner hierarchy than two competing typefaces. Only add a second font when you need genuine contrast (e.g., display headlines + body serif).
+**You often don't need a second font.** One well-chosen family in 2–3 weights creates cleaner hierarchy than two competing typefaces. Only add a second when you need genuine contrast — display headlines + body sans, or a monospace for data.
 
 When pairing, contrast on multiple axes:
+
 - Serif + Sans (structure contrast)
 - Geometric + Humanist (personality contrast)
 - Condensed display + Wide body (proportion contrast)
 
-**Never pair fonts that are similar but not identical** (e.g., two geometric sans-serifs). They create visual tension without clear hierarchy.
+**Never pair fonts that are similar but not identical** (e.g., Inter and SF Pro). They create visual tension without clear hierarchy.
 
-### Web Font Loading
+## Dynamic Type & Font Scaling
 
-The layout shift problem: fonts load late, text reflows, and users see content jump. Here's the fix:
+**This is the single biggest source of mobile typography defects.** iOS users can crank text size up to 310%; Android users can hit 200%. Your screens *will* run at those scales.
 
-```css
-/* 1. Use font-display: swap for visibility */
-@font-face {
-  font-family: 'CustomFont';
-  src: url('font.woff2') format('woff2');
-  font-display: swap;
-}
+By default in RN, `allowFontScaling` is `true`. Every `<Text>` respects the user's system font scale. **Do not disable it.** Disabling Dynamic Type is an accessibility violation and a common AI tell ("the AI app where text doesn't grow").
 
-/* 2. Match fallback metrics to minimize shift */
-@font-face {
-  font-family: 'CustomFont-Fallback';
-  src: local('Arial');
-  size-adjust: 105%;        /* Scale to match x-height */
-  ascent-override: 90%;     /* Match ascender height */
-  descent-override: 20%;    /* Match descender depth */
-  line-gap-override: 10%;   /* Match line spacing */
-}
+The real work is making your layout *survive* the scale-up:
 
-body {
-  font-family: 'CustomFont', 'CustomFont-Fallback', sans-serif;
-}
+- **Use `flex: 1` + `numberOfLines` thoughtfully.** A title that must fit one line gets `numberOfLines={1}` + `ellipsizeMode="tail"`. A body paragraph stays unbounded.
+- **Test at 2× scale.** iOS Simulator → I/O menu → Toggle Larger Accessibility Sizes. Android Emulator → Settings → Display → Font size → Largest. Every screen reflows. Defects: clipping, overlapping text, broken tab bars, FAB labels pushed off-screen.
+- **Use `maxFontSizeMultiplier` to cap, not to disable.** On a tab bar label or a tightly-fitted CTA where 2× would break the layout entirely, cap with `maxFontSizeMultiplier={1.4}` rather than `allowFontScaling={false}`. This still respects the user's preference, just bounded.
+
+```tsx
+<Text
+  style={tokens.type.label}
+  numberOfLines={1}
+  ellipsizeMode="tail"
+  maxFontSizeMultiplier={1.4}
+>
+  Settings
+</Text>
 ```
 
-Tools like [Fontaine](https://github.com/unjs/fontaine) calculate these overrides automatically.
+For more aggressive responsive sizing (rare; usually a code smell), `PixelRatio.getFontScale()` returns the user's current scale, and you can compute custom-bounded sizes. Use sparingly — the system already does this work correctly 95% of the time.
 
-**`swap` vs `optional`**: `swap` shows fallback text immediately and FOUT-swaps when the web font arrives. `optional` uses the fallback if the web font misses a small load budget (~100ms) and avoids the shift entirely. Pick `optional` when zero layout shift matters more than seeing the branded font on slow networks.
+## Numeric & Special Features
 
-**Preload the critical weight only**: typically the regular-weight body font used above the fold. Preloading every weight costs more bandwidth than it saves.
+RN supports a small slice of OpenType. The portable bits:
 
-**Variable fonts for 3+ weights or styles**: a single variable font file is usually smaller than three static weight files, gives fractional weight control, and pairs well with `font-optical-sizing: auto`. For 1–2 weights, static is fine.
-
-## Modern Web Typography
-
-### Fluid Type
-
-Fluid typography via `clamp(min, preferred, max)` scales text smoothly with the viewport. The middle value (e.g., `5vw + 1rem`) controls scaling rate (higher vw = faster scaling). Add a rem offset so it doesn't collapse to 0 on small screens.
-
-**Use fluid type for**: Headings and display text on marketing/content pages where text dominates the layout and needs to breathe across viewport sizes.
-
-**Use fixed `rem` scales for**: App UIs, dashboards, and data-dense interfaces. No major app design system (Material, Polaris, Primer, Carbon) uses fluid type in product UI; fixed scales with optional breakpoint adjustments give the spatial predictability that container-based layouts need. Body text should also be fixed even on marketing pages, since the size difference across viewports is too small to warrant it.
-
-**Bound your clamp()**: keep `max-size ≤ ~2.5 × min-size`. Wider ratios break the browser's zoom and reflow behaviour and make large viewports feel like the page is shouting.
-
-**Scale container width and font-size together** so effective character measure stays in the 45–75ch band at every viewport. A heading that widens faster than its container drifts out of the comfortable measure at the top end.
-
-### OpenType Features
-
-Most developers don't know these exist. Use them for polish:
-
-```css
-/* Tabular numbers for data alignment */
-.data-table { font-variant-numeric: tabular-nums; }
-
-/* Proper fractions */
-.recipe-amount { font-variant-numeric: diagonal-fractions; }
-
-/* Small caps for abbreviations */
-abbr { font-variant-caps: all-small-caps; }
-
-/* Disable ligatures in code */
-code { font-variant-ligatures: none; }
-
-/* Enable kerning (usually on by default, but be explicit) */
-body { font-kerning: normal; }
+```tsx
+<Text style={{ fontVariant: ['tabular-nums'], ...tokens.type.body }}>
+  $1,234.56
+</Text>
 ```
 
-Check what features your font supports at [Wakamai Fondue](https://wakamaifondue.com/).
+**Use `tabular-nums` for**: prices, timers, counters, any digits that change in place. Without it, `1.00` and `0.99` have different widths and the row jiggles when the value updates.
 
-### Rendering polish
+Other `fontVariant` options (`small-caps`, `oldstyle-nums`, `lining-nums`) have inconsistent platform support — don't rely on them as load-bearing design.
 
-```css
-/* Even out heading line lengths (browser picks better break points) */
-h1, h2, h3 { text-wrap: balance; }
+There is no portable RN equivalent for `text-wrap: balance` or `text-wrap: pretty`. If you need a headline to break cleanly, control it manually (`\n`) or use `numberOfLines` with an `ellipsizeMode`.
 
-/* Reduce orphans and ragged endings in long prose */
-article p { text-wrap: pretty; }
+## ALL-CAPS Tracking
 
-/* Variable fonts: pick the right optical-size master automatically */
-body { font-optical-sizing: auto; }
+At default `letterSpacing`, capitals sit too close. Add `letterSpacing: 0.5` to `1.5` (or roughly 5–12% of fontSize) on short all-caps labels, eyebrows, button labels. Without this, an uppercase CTA reads as cramped and immature.
+
+```tsx
+label: { fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 1.0 }
 ```
 
-**ALL-CAPS tracking**: capitals sit too close at default spacing. Add 5–12% letter-spacing (`letter-spacing: 0.05em` to `0.12em`) to short all-caps labels, eyebrows, and small headings. Real small caps (via `font-variant-caps`) need the same treatment, slightly gentler.
+Don't set `textTransform: 'uppercase'` on long passages — uppercase is for labels and emphasis, not paragraphs. And the tracking adjustment doesn't apply uniformly to mixed case; it's an all-caps treatment specifically.
 
 ## Typography System Architecture
 
-Name tokens semantically (`--text-body`, `--text-heading`), not by value (`--font-size-16`). Include font stacks, size scale, weights, line-heights, and letter-spacing in your token system.
+Name tokens by role, not value. `tokens.type.body` not `tokens.type.size16`. The role survives a size change; the value name doesn't.
 
-## Accessibility Considerations
+Every type role declares:
 
-Beyond contrast ratios (which are well-documented), consider:
+- `fontSize` (number, points)
+- `lineHeight` (number, points — not a multiplier)
+- `fontWeight` (string literal: `'400' as const`, etc. — `as const` keeps TypeScript happy)
+- `letterSpacing` (optional; needed for all-caps labels and dark-mode body)
+- `fontFamily` (optional; omit to use platform default)
 
-- **Never disable zoom**: `user-scalable=no` breaks accessibility. If your layout breaks at 200% zoom, fix the layout.
-- **Use rem/em for font sizes**: This respects user browser settings. Never `px` for body text.
-- **Minimum 16px body text**: Smaller than this strains eyes and fails WCAG on mobile.
-- **Adequate touch targets**: Text links need padding or line-height that creates 44px+ tap targets.
+## Accessibility
+
+- **Don't disable `allowFontScaling`.** Cap with `maxFontSizeMultiplier` if you genuinely must bound.
+- **Minimum 16pt body text** for primary reading. Smaller is acceptable for metadata, captions, list secondary lines.
+- **Touch targets via padding or `hitSlop`** when a `<Text>` is itself the affordance (e.g. an inline link). Don't rely on the text's natural height to meet the 44pt / 48dp minimum.
+- **`accessibilityRole="header"`** on screen titles and section headers so VoiceOver and TalkBack can navigate by heading.
+- **`accessibilityLabel`** when displayed text is decorative or abbreviated. A `<Text>$1.2k</Text>` should announce "one thousand two hundred dollars."
 
 ---
 
-**Avoid**: More than 2-3 font families per project. Skipping fallback font definitions. Ignoring font loading performance (FOUT/FOIT). Using decorative fonts for body text.
+**Avoid**:
+- More than 2 font families per app.
+- Disabling Dynamic Type (`allowFontScaling={false}`) anywhere except as a last-resort layout fix on a single label.
+- Hardcoded font sizes outside the token type scale.
+- Multipliers in `lineHeight` (`1.5`) — RN expects total line box in points (`24`).
+- Pairing two similar fonts (Inter + SF Pro, Manrope + Geist).
+- Custom fonts loaded after the splash clears (FOUT).
+- All-caps text without tracking.
+- Variable fonts (limited cross-platform support).
