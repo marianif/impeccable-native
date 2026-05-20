@@ -1,8 +1,10 @@
 ---
 name: impeccable-native
-description: "Use when the user wants to design, build, critique, audit, polish, clarify, harden, optimize, adapt, animate, colorize, or otherwise improve a React Native or Expo mobile interface. Covers app screens, navigation flows, component design, onboarding, empty states, settings, dashboards, and mobile design systems. Handles visual hierarchy, touch targets, safe areas, platform parity (iOS/Android), accessibility (VoiceOver/TalkBack), performance (re-renders, FlatList), theming (light/dark), typography (Dynamic Type, font scaling), motion (Reanimated 3, Moti), layout (Yoga flexbox), and token-based design systems. Also use for bland mobile UIs that need more personality, overdesigned UIs that should be quieter, or ambitious effects with Skia and Reanimated. Not for web, backend, or non-UI tasks."
-argument-hint: "[{{command_hint}}] [target]"
+description: Use when the user wants to design, build, critique, audit, polish, clarify, harden, optimize, adapt, animate, colorize, or otherwise improve a React Native or Expo mobile interface. Covers app screens, navigation flows, component design, onboarding, empty states, settings, dashboards, and mobile design systems. Handles visual hierarchy, touch targets, safe areas, platform parity (iOS/Android), accessibility (VoiceOver/TalkBack), performance (re-renders, FlatList), theming (light/dark), typography (Dynamic Type, font scaling), motion (Reanimated 3, Moti), layout (Yoga flexbox), and token-based design systems. Also use for bland mobile UIs that need more personality, overdesigned UIs that should be quieter, or ambitious effects with Skia and Reanimated. Not for web, backend, or non-UI tasks.
+version: 0.1.0
 user-invocable: true
+argument-hint: "[craft|teach|document|extract|adapt|animate|audit|bolder|clarify|colorize|critique|delight|distill|harden|onboard|layout|optimize|overdrive|polish|quieter|shape|typeset] [target]"
+license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
 allowed-tools:
   - Bash(node {{scripts_path}}/detect-rn-flavor.mjs)
   - Bash(node {{scripts_path}}/load-context.mjs)
@@ -11,7 +13,6 @@ allowed-tools:
   - Bash(node {{scripts_path}}/a11y-audit.mjs *)
   - Bash(node {{scripts_path}}/screenshot.mjs *)
   - Bash(node {{scripts_path}}/pin.mjs *)
-license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
 ---
 
 Designs and iterates production-grade React Native and Expo interfaces. Real working code, committed design choices, exceptional mobile craft.
@@ -32,7 +33,7 @@ Skipping these produces generic output that ignores the project's platform, styl
 Run first, before context:
 
 ```bash
-node {{scripts_path}}/detect-rn-flavor.mjs
+node .claude/skills/impeccable-native/scripts/detect-rn-flavor.mjs
 ```
 
 Store the result for the session. Key fields and what they change:
@@ -52,12 +53,12 @@ Two files, case-insensitive. The loader looks at the project root by default and
 - **DESIGN.md**: optional but strongly recommended. Token definitions (colors, typography, spacing, radii, shadows, motion).
 
 ```bash
-node {{scripts_path}}/load-context.mjs
+node .claude/skills/impeccable-native/scripts/load-context.mjs
 ```
 
 Consume the full JSON output. Never pipe through `head`, `tail`, `grep`, or `jq`.
 
-If PRODUCT.md is missing or placeholder: run `{{command_prefix}}impeccable-native teach`, then resume. If DESIGN.md is missing: nudge once per session (*"Run `{{command_prefix}}impeccable-native document` for token-aware output"*), then proceed.
+If PRODUCT.md is missing or placeholder: run `/impeccable-native teach`, then resume. If DESIGN.md is missing: nudge once per session (*"Run `/impeccable-native document` for token-aware output"*), then proceed.
 
 ### 3. Register
 
@@ -185,16 +186,16 @@ Plus two management commands: `pin <command>` and `unpin <command>`, detailed be
 2. **First word matches a command**: load its reference file and follow its instructions. Everything after the command name is the target.
 3. **First word does not match**: general design invocation. Apply the setup steps, shared design laws, and the loaded register reference, using the full argument as context.
 
-Setup (flavor detection, context gathering, register) is already loaded by then; sub-commands do not re-invoke `{{command_prefix}}impeccable-native`.
+Setup (flavor detection, context gathering, register) is already loaded by then; sub-commands do not re-invoke `/impeccable-native`.
 
 If the first word is `craft`, setup still runs first, but [reference/craft.md](reference/craft.md) owns the rest of the flow. If setup invokes `teach` as a blocker, finish teach, refresh context, then resume the original command and target.
 
 ## Pin / Unpin
 
-**Pin** creates a standalone shortcut so `{{command_prefix}}<command>` invokes `{{command_prefix}}impeccable-native <command>` directly. **Unpin** removes it. The script writes to every harness directory present in the project.
+**Pin** creates a standalone shortcut so `/<command>` invokes `/impeccable-native <command>` directly. **Unpin** removes it. The script writes to every harness directory present in the project.
 
 ```bash
-node {{scripts_path}}/pin.mjs <pin|unpin> <command>
+node .claude/skills/impeccable-native/scripts/pin.mjs <pin|unpin> <command>
 ```
 
 Valid `<command>` is any command from the table above. Report the script's result concisely. Confirm the new shortcut on success, relay stderr verbatim on error.
