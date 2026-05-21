@@ -1,141 +1,290 @@
-Space is the most underused design tool. Find the layout's actual problem (monotone spacing, weak hierarchy, identical card grids, the centered-stack default) and fix the structure, not the surface.
+Space is the most underused design tool on mobile. Find the layout's actual problem — monotone spacing, weak hierarchy, identical card grids, no navigation structure — and fix the structure, not the surface.
 
 ---
 
 ## Register
 
-Brand: asymmetric compositions, fluid spacing with `clamp()`, intentional grid-breaking for emphasis. Rhythm through contrast: tight groupings paired with generous separations.
+Brand: asymmetric compositions, deliberate rhythm, layout-breaking moments for emphasis. Tight groupings paired with generous separations. The grid exists to be broken with intention.
 
-Product: predictable grids, consistent densities, familiar navigation patterns. Responsive behavior is structural (collapse sidebar, responsive table), not fluid typography. Consistency IS an affordance.
+Product: predictable grids, consistent densities, familiar navigation shells. Adaptive behavior is structural (phone-to-tablet column expansion, orientation lock). Consistency IS an affordance.
 
 ---
 
 ## Assess Current Layout
 
-Analyze what's weak about the current spatial design:
+Before touching anything, diagnose the actual problem. Misdiagnosing layout problems leads to cosmetic fixes over structural rot.
 
-1. **Spacing**:
-   - Is spacing consistent or arbitrary? (Random padding/margin values)
-   - Is all spacing the same? (Equal padding everywhere = no rhythm)
-   - Are related elements grouped tightly, with generous space between groups?
+1. **Navigation shell**: which shell is in use — stack, tab, drawer, or a composition? Does it match what the content demands? A modal stack where bottom tabs would surface equal-weight destinations is a structural miss, not a visual one.
 
-2. **Visual hierarchy**:
-   - Apply the squint test: blur your (metaphorical) eyes. Can you still identify the most important element, second most important, and clear groupings?
-   - Is hierarchy achieved effectively? (Space and weight alone can be enough; is the current approach working?)
-   - Does whitespace guide the eye to what matters?
+2. **Spacing and rhythm**:
+   - Is spacing consistent, or are there arbitrary values outside the token scale?
+   - Is all spacing equal? Equal padding everywhere means no rhythm — related elements should be grouped tightly, groups separated generously.
+   - Do sibling spacings use `gap` (RN ≥ 0.71) or a consistent `marginBottom` pattern?
 
-3. **Grid & structure**:
-   - Is there a clear underlying structure, or does the layout feel random?
-   - Are identical card grids used everywhere? (Icon + heading + text, repeated endlessly)
-   - Is everything centered? (Left-aligned with asymmetric layouts feels more designed, but not a hard and fast rule)
+3. **Visual hierarchy** — run the squint test (see [spatial-design.md](spatial-design.md)): blur your vision or screenshot and apply 4px Gaussian blur. Can you still identify the primary action, the most important content, and clear groupings? If everything looks flat, the hierarchy problem is spatial before it is typographic.
 
-4. **Rhythm & variety**:
-   - Does the layout have visual rhythm? (Alternating tight/generous spacing)
-   - Is every section structured the same way? (Monotonous repetition)
-   - Are there intentional moments of surprise or emphasis?
+4. **List choice**: is the right scroll primitive in use?
+   - `ScrollView` for short, static content
+   - `FlatList` for long, uniform lists
+   - `SectionList` for grouped lists
+   - `FlashList` for performance-critical lists (1000+ items, fast scroll)
+   - Nested `ScrollView`s without `nestedScrollEnabled` will silently eat gestures
 
-5. **Density**:
-   - Is the layout too cramped? (Not enough breathing room)
-   - Is the layout too sparse? (Excessive whitespace without purpose)
-   - Does density match the content type? (Data-dense UIs need tighter spacing; marketing pages need more air)
+5. **Touch targets**: are pressable areas ≥ 44pt on iOS / 48dp on Android? Visual size and tap size are independent — check both.
 
-**CRITICAL**: Layout problems are often the root cause of interfaces feeling "off" even when colors and fonts are fine. Space is a design material; use it with intention.
+6. **Safe area handling**: are screens hardcoding inset values (`paddingTop: 44`) or composing correctly with `useSafeAreaInsets()`?
+
+**CRITICAL**: platform parity is a gate, not a suggestion. A layout that looks correct on iOS Simulator and broken on Android Emulator has not been assessed. Run both before planning.
+
+---
 
 ## Plan Layout Improvements
 
-Consult the [spatial design reference](spatial-design.md) for detailed guidance on grids, rhythm, and container queries.
+Consult [spatial-design.md](spatial-design.md) for the spacing scale, Yoga flexbox rules, safe area composition, touch target patterns, and depth/elevation guidance. Do not duplicate that content here — cross-reference and apply it.
 
-Create a systematic plan:
+Create a plan across four axes:
 
-- **Spacing system**: Use a consistent scale (a framework's built-in scale like Tailwind's, rem-based tokens, or a custom system). The specific values matter less than consistency.
-- **Hierarchy strategy**: How will space communicate importance?
-- **Layout approach**: What structure fits the content? Flex for 1D, Grid for 2D, named areas for complex page layouts.
-- **Rhythm**: Where should spacing be tight vs generous?
+- **Spacing system**: all values from `tokens.space.*`. The step name (`tokens.space['4']`) is more meaningful than the raw number (`16`).
+- **Hierarchy strategy**: how will space, size, weight, and position communicate importance? Pick 2–3 dimensions in combination — space alone can be enough for strong hierarchy.
+- **Layout structure**: which Yoga flex composition fits the content? Column stacks for screens, row arrangements for toolbars and list rows. No `display: grid` — use nested flexes or `FlatList numColumns` for grid-shaped layouts.
+- **Scroll primitive and navigation shell**: confirm the right choice for the content's length and grouping; confirm the navigation shell matches the information architecture.
 
-## Improve Layout Systematically
+---
 
-### Establish a Spacing System
+## Implement Layout Improvements
 
-- Use a consistent spacing scale (framework scales like Tailwind, rem-based tokens, or a custom scale all work). What matters is that values come from a defined set, not arbitrary numbers.
-- Name tokens semantically if using custom properties: `--space-xs` through `--space-xl`, not `--spacing-8`
-- Use `gap` for sibling spacing instead of margins; eliminates margin collapse hacks
-- Apply `clamp()` for fluid spacing that breathes on larger screens
+### Yoga Flexbox Fundamentals
 
-### Create Visual Rhythm
+RN uses Yoga, a flexbox implementation with two divergences from web that will bite you if you forget them:
 
-- **Tight grouping** for related elements (8-12px between siblings)
-- **Generous separation** between distinct sections (48-96px)
-- **Varied spacing** within sections (not every row needs the same gap)
-- **Asymmetric compositions**: break the predictable centered-content pattern when it makes sense
+- **`flexDirection` defaults to `'column'`**, not `'row'`. Most screens are column flexes without declaring it. Row arrangements require explicit `flexDirection: 'row'`.
+- **No `display: grid`**. Grid-shaped layouts use nested flex containers or `FlatList numColumns`. For masonry / uneven 2D, `react-native-masonry-list` is the standard library.
+- **No `position: sticky`**. Sticky headers live inside `FlatList` / `SectionList` via `stickyHeaderIndices` or `renderSectionHeader`, not CSS positioning.
+- **`gap` requires RN ≥ 0.71**. On older versions, fall back to `marginBottom` per child. Always check `detect-rn-flavor.mjs` `rnVersion`. See [spatial-design.md](spatial-design.md) for the fallback pattern.
 
-### Choose the Right Layout Tool
+```tsx
+// Yoga column stack — the default screen shape
+<View style={{ flex: 1, gap: tokens.space['4'] }}>
+  <Header />
+  <Content />
+  <Footer />
+</View>
 
-- **Use Flexbox for 1D layouts**: Rows of items, nav bars, button groups, card contents, most component internals. Flex is simpler and more appropriate for the majority of layout tasks.
-- **Use Grid for 2D layouts**: Page-level structure, dashboards, data-dense interfaces, anything where rows AND columns need coordinated control.
-- **Don't default to Grid** when Flexbox with `flex-wrap` would be simpler and more flexible.
-- Use `repeat(auto-fit, minmax(280px, 1fr))` for responsive grids without breakpoints.
-- Use named grid areas (`grid-template-areas`) for complex page layouts; redefine at breakpoints.
+// Explicit row — toolbar, list row, button group
+<View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space['2'] }}>
+  <Icon size={20} />
+  <Text style={tokens.type.body}>{label}</Text>
+  <Chevron />
+</View>
+```
 
-### Break Card Grid Monotony
+### Scroll Primitive Decision Tree
 
-- Don't default to card grids for everything; spacing and alignment create visual grouping naturally
-- Use cards only when content is truly distinct and actionable. Never nest cards inside cards
-- Vary card sizes, span columns, or mix cards with non-card content to break repetition
+Choose the right primitive before writing any scroll container. Swapping later is disruptive.
 
-### Strengthen Visual Hierarchy
+```
+Content length + structure
+├── Short / static (< ~20 items, no virtualization needed)
+│   └── ScrollView
+│       └── Never nest ScrollViews without nestedScrollEnabled={true}
+│           on the inner one (and even then, prefer alternatives)
+├── Long / uniform items
+│   └── FlatList  ← default choice for any dynamic list
+├── Long / grouped items (sections with headers)
+│   └── SectionList
+└── Performance-critical (1000+ items, fast scroll, animation-adjacent)
+    └── FlashList (@shopify/flash-list)
+        └── Must provide estimatedItemSize; keyExtractor mandatory
+```
 
-- Use the fewest dimensions needed for clear hierarchy. Space alone can be enough; generous whitespace around an element draws the eye. Some of the most polished designs achieve rhythm with just space and weight. Add color or size contrast only when simpler means aren't sufficient.
-- Be aware of reading flow: in LTR languages, the eye naturally scans top-left to bottom-right, but primary action placement depends on context (e.g., bottom-right in dialogs, top in navigation).
-- Create clear content groupings through proximity and separation.
+**FlatList minimum correct setup**:
 
-### Manage Depth & Elevation
+```tsx
+<FlatList
+  data={items}
+  keyExtractor={(item) => item.id}
+  renderItem={({ item }) => <Row item={item} />}
+  contentContainerStyle={{
+    padding: tokens.space['4'],
+    gap: tokens.space['2'],      // RN >= 0.71
+  }}
+  removeClippedSubviews          // reclaim memory off-screen
+  windowSize={10}                // default 21 is too large for most lists
+  initialNumToRender={12}        // match visible viewport
+/>
+```
 
-- Create a semantic z-index scale (dropdown → sticky → modal-backdrop → modal → toast → tooltip)
-- Build a consistent shadow scale (sm → md → lg → xl); shadows should be subtle
-- Use elevation to reinforce hierarchy, not as decoration
+For tablet-adaptive multi-column lists, drive `numColumns` from `useWindowDimensions()` and always change the `key` prop when it flips — FlatList caches measurement state per index. Full pattern in [spatial-design.md](spatial-design.md).
 
-### Optical Adjustments
+**Never nest a ScrollView inside a FlatList** (or vice versa) without explicit `nestedScrollEnabled`. The outer scroll container captures gestures and the inner one becomes unscrollable. When you need a scrollable header above a list, use `FlatList` `ListHeaderComponent` — not a ScrollView wrapping a FlatList.
 
-- If an icon looks visually off-center despite being geometrically centered, nudge it. But only if you're confident it actually looks wrong. Don't adjust speculatively.
+### Safe Area Composition
 
-**NEVER**:
-- Use arbitrary spacing values outside your scale
-- Make all spacing equal (variety creates hierarchy)
-- Wrap everything in cards (not everything needs a container)
-- Nest cards inside cards (use spacing and dividers for hierarchy within)
-- Use identical card grids everywhere (icon + heading + text, repeated)
-- Center everything (left-aligned with asymmetry feels more designed)
-- Default to the hero metric layout (big number, small label, stats, gradient) as a template. If showing real user data, a prominent metric can work, but it should display actual data, not decorative numbers.
-- Default to CSS Grid when Flexbox would be simpler; use the simplest tool for the job
-- Use arbitrary z-index values (999, 9999); build a semantic scale
+Every screen edge composes the inset with a token step. The inset is the floor, not the total padding.
+
+```tsx
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const insets = useSafeAreaInsets();
+
+<View style={{
+  paddingTop: insets.top + tokens.space['4'],
+  paddingBottom: insets.bottom + tokens.space['6'],
+  paddingHorizontal: tokens.space['4'],
+}}>
+```
+
+For full-screen surfaces (modals, sheets, splash), use `<SafeAreaView edges={['top', 'bottom']}>` instead of computing manually. Hardcoding `paddingTop: 44` is a finding — it works on one device and breaks on the rest. See [spatial-design.md](spatial-design.md) for the full safe-area pattern and device coverage rationale.
+
+### Touch Targets
+
+Visual size and tap size are independent. Icons can look 20pt; the pressable area must be ≥ 44pt (iOS) / 48dp (Android). Two patterns — use whichever fits the surrounding layout:
+
+**Padding to grow the touch area** (preferred when layout allows):
+
+```tsx
+<Pressable
+  onPress={onPress}
+  style={({ pressed }) => ({
+    padding: tokens.space['3'],   // 12pt × 4 = 48pt minimum
+    opacity: pressed ? 0.7 : 1,
+  })}
+  accessibilityRole="button"
+  accessibilityLabel="Close"
+>
+  <CloseIcon size={24} />
+</Pressable>
+```
+
+**`hitSlop` when padding would distort the layout** (tight headers, inline chevrons):
+
+```tsx
+<Pressable
+  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+  onPress={onPress}
+  accessibilityRole="button"
+>
+  <ChevronRight size={16} />
+</Pressable>
+```
+
+Do not use `hitSlop` to rescue a button that is visually too small. Fix the visual size first, reach for `hitSlop` only when the tap zone cannot grow visually.
+
+### Navigation Shell Composition
+
+The navigation shell is part of the layout. Getting the shell wrong means the layout will fight every screen built inside it.
+
+**Stack navigator** — sequential flows: onboarding, settings detail, drill-down content. Each screen pushes onto a stack; swipe-back is the natural back gesture on iOS. On Android, hardware/gesture back must be wired correctly — every modal and bottom sheet needs a `BackHandler` or the system back will do the wrong thing.
+
+**Bottom tab navigator** — equal-weight top-level destinations (max 5 tabs). Use when destinations are coordinate, not hierarchical. Never replace bottom tabs with a hamburger menu when 5 or fewer items fit. The thumb lives at the bottom of the screen; hiding navigation behind a top-left control defeats mobile ergonomics.
+
+**Drawer navigator** — secondary navigation for deep settings trees, multi-account switching, or contextual panels. Not a replacement for bottom tabs on the main navigation. Drawer-as-primary-nav is an anti-pattern — it hides structure.
+
+**Bottom sheets** — for secondary actions, contextual menus, confirmation flows, and any action that doesn't warrant a full-screen push. Use `@gorhom/bottom-sheet`:
+
+```tsx
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+
+const snapPoints = useMemo(() => ['40%', '80%'], []);
+
+<BottomSheet
+  ref={bottomSheetRef}
+  index={-1}                     // -1 = closed
+  snapPoints={snapPoints}
+  enablePanDownToClose
+  backgroundStyle={{ backgroundColor: tokens.color.surface }}
+>
+  <BottomSheetView style={{ padding: tokens.space['4'] }}>
+    {/* content */}
+  </BottomSheetView>
+</BottomSheet>
+```
+
+Three snap points is usually one too many. Start with one (action height) or two (compact / expanded). Every sheet needs three ways to close: swipe down, tap the scrim, and Android system back. See [interaction-design.md](interaction-design.md) for the full sheet/modal hierarchy decision tree.
+
+**Never use a bottom sheet for every secondary action.** It is the mobile equivalent of the modal-as-first-thought anti-pattern. Inline expansion, context menus (`UIContextMenuInteraction` via `Pressable` `onLongPress`), and sheet-on-explicit-tap are different tools — use the right one.
+
+### Spacing Rhythm
+
+Apply the 4pt scale from `tokens.space` to build rhythm through contrast — tight groupings inside sections, generous gaps between them.
+
+```tsx
+// Section with internal tight grouping, generous external separation
+<View style={{ marginBottom: tokens.space['8'] }}>        {/* 32pt between sections */}
+  <Text style={tokens.type.label}>Recent</Text>
+  <View style={{ marginTop: tokens.space['2'], gap: tokens.space['2'] }}>  {/* 8pt between rows */}
+    {items.map((item) => <Row key={item.id} item={item} />)}
+  </View>
+</View>
+```
+
+Avoid equal spacing everywhere. Equal padding on every element removes rhythm. The visual beat comes from alternating tight and generous spacing — see [spatial-design.md](spatial-design.md) for the full hierarchy-through-spacing model.
+
+### Grid Layouts (No `display: grid`)
+
+For card grids on tablet or multi-column feature layouts, compose with `FlatList numColumns` or nested flex with `flexWrap`:
+
+```tsx
+// Flex wrap grid — static content, known item count
+<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.space['3'] }}>
+  {items.map((item) => (
+    <View
+      key={item.id}
+      style={{ width: (screenWidth - tokens.space['4'] * 2 - tokens.space['3']) / 2 }}
+    >
+      <Card item={item} />
+    </View>
+  ))}
+</View>
+
+// FlatList numColumns — dynamic, virtualized
+// Full pattern: see spatial-design.md "The Self-Adjusting List"
+```
+
+`flexWrap` works for static grids. For long lists, `FlatList numColumns` is mandatory — `flexWrap` on a long list defeats virtualization.
+
+### Breaking Card Grid Monotony
+
+A `FlatList` of identical card components with icon + title + subtitle is an absolute ban (SKILL.md). Before reaching for a card:
+
+- Can spacing and alignment group the content naturally?
+- Would list rows with swipe actions provide clearer affordance?
+- Is the content genuinely distinct and tappable as a single unit?
+
+Use a card only when content needs an explicit interaction boundary. Never nest cards inside cards — use `StyleSheet.hairlineWidth` dividers (`borderTopWidth: StyleSheet.hairlineWidth`) for hierarchy within a card. Vary card sizes, break rows with featured items, or mix card and row layouts to avoid identical-grid monotony.
+
+### Depth and Elevation
+
+Shadows are platform-split. iOS uses `shadow*` props; Android uses `elevation`. Pair them in tokens and apply with `Platform.OS`. Full token pattern in [spatial-design.md](spatial-design.md).
+
+Two rules: flat by default (reach for shadow only on interactive, elevated, or backdrop-separated surfaces), and low alpha (`shadowOpacity` stays below 0.16). Higher reads as 2014 Material Design. Avoid arbitrary `zIndex` — when you need it, use the semantic scale in `tokens` (modal=100, sheet=200, toast=300, tooltip=400).
+
+---
 
 ## Verify Layout Improvements
 
-- **Squint test**: Can you identify primary, secondary, and groupings with blurred vision?
-- **Rhythm**: Does the page have a satisfying beat of tight and generous spacing?
-- **Hierarchy**: Is the most important content obvious within 2 seconds?
-- **Breathing room**: Does the layout feel comfortable, not cramped or wasteful?
-- **Consistency**: Is the spacing system applied uniformly?
-- **Responsiveness**: Does the layout adapt gracefully across screen sizes?
+Run both platforms before considering the layout done. A single-platform verify is a partial result.
 
-When the rhythm and hierarchy land, hand off to `{{command_prefix}}impeccable polish` for the final pass.
+- **Squint test**: screenshot the screen and blur it mentally (or literally). Can you identify primary action, most important content, and clear groupings?
+- **Rhythm**: does the layout have a satisfying beat of tight and generous spacing?
+- **Touch targets**: tap every interactive element. Does it register without hunting? Check with one thumb, not a mouse.
+- **Safe areas**: test on a device or simulator with a notch/Dynamic Island (iPhone 15 Pro sim) AND one without (iPhone SE). Test on Android with status bar of varying height (Pixel 7 sim). Hardcoded insets will fail visibly.
+- **Scroll primitives**: scroll every list to its end. No gesture conflicts, no swallowed touches. Check `nestedScrollEnabled` on any nested scroll.
+- **Navigation shell**: test the Android back gesture and hardware back button on every sheet, modal, and push screen. Back must always do the right thing.
+- **Tablet / orientation** (if in scope): run on an iPad or large-screen Android simulator. Check landscape orientation if not locked.
+- **Dynamic Type 2×**: enable large accessibility text. Nothing clips, truncates unexpectedly, or overlaps.
+- **Token discipline**: no raw pixel numbers in spacing, no hardcoded `paddingTop: 44`, no `gap` on RN < 0.71 without a fallback.
 
-## Live-mode signature params
+When rhythm and hierarchy land on both platforms, hand off to `{{command_prefix}}impeccable-native polish` for the final pass.
 
-Each variant MUST declare a `density` param. Drive all spacing tokens in the variant's scoped CSS through `calc(var(--p-density, 1) * <base>)`: paddings, gaps, column widths. Users slide from airy to packed and see layout re-breathe with no regeneration.
-
-```json
-{"id":"density","kind":"range","min":0.6,"max":1.4,"step":0.05,"default":1,"label":"Density"}
-```
-
-For variants whose topology genuinely changes (stacked vs. side-by-side, grid vs. bento), use a `steps` param whose scoped CSS branches via `:scope[data-p-structure="X"]`. One structure param + one density param is a powerful combo; resist adding a third.
-
-```json
-{"id":"structure","kind":"steps","default":"grid","label":"Structure","options":[
-  {"value":"stacked","label":"Stacked"},
-  {"value":"grid","label":"Grid"},
-  {"value":"bento","label":"Bento"}
-]}
-```
-
-See `reference/live.md` for the full params contract.
+**NEVER**:
+- Use arbitrary spacing values outside `tokens.space`
+- Hardcode safe-area insets (`paddingTop: 44`, `paddingBottom: 34`)
+- Nest `ScrollView` inside `FlatList` (or vice versa) without `nestedScrollEnabled`
+- Use `ScrollView` for lists that may grow long — virtualization is not optional at scale
+- Forget `key={numColumns}` when flipping `FlatList numColumns`
+- Default to bottom sheets for every secondary action (bottom-sheet-for-everything is an anti-pattern)
+- Use a drawer or hamburger menu when bottom tabs fit 5 or fewer items
+- Apply `gap` without checking `rnVersion` against 0.71
+- Use `flexWrap` for long dynamic lists — use `FlatList numColumns`
+- Verify only on iOS and consider the layout done (Constitution Principle IV)

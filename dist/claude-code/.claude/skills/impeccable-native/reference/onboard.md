@@ -18,6 +18,7 @@ Understand what users need to experience and why:
    - What's their experience level? (Beginners, power users, mixed?)
    - What's their motivation? (Excited and exploring? Required by work?)
    - What's their time commitment? (A 90-second micro-task? A 10-minute setup?)
+   - What platform are they on? (iOS-first, Android-first, parity expected?)
 
 3. **Define success**:
    - What's the minimum users need to experience to be successful — not learn, experience?
@@ -35,31 +36,26 @@ Understand what users need to experience and why:
 ## Onboarding Principles
 
 ### Show, Don't Tell
-
 - Demonstrate with working examples in the real app, not a tutorial overlay
 - Use progressive disclosure: teach one thing at a time, at the moment it's needed
 - Partial-reveal affordances (a row peeking to hint at swipe actions) teach more than text
 
 ### Make It Optional (When Possible)
-
 - Let experienced users skip. Every onboarding screen needs a visible "Skip" or "Not now"
 - Don't gate the product behind setup. Defer friction as long as possible
 - Track skip — high skip rate means the screen is losing value, not that users are power users
 
 ### Time to Value
-
 - Get users to the aha moment first. Everything else is setup
 - Front-load the most compelling value prop: screen 1 of onboarding is the ad, not the instructions
 - Keep multi-step onboarding to 3 screens maximum — 3 is a principle, not a guideline
 
 ### Context Over Ceremony
-
 - Teach features when users encounter them, not upfront
 - Empty states are onboarding opportunities, not afterthoughts
 - Coach marks fire on the first meaningful interaction, not on cold launch
 
 ### Respect User Intelligence
-
 - Don't patronize or over-explain standard mobile patterns
 - Be concise. Users read labels, not paragraphs
 - Assume users can figure out navigation; explain the non-obvious
@@ -71,7 +67,7 @@ The splash screen is not a loading screen you ship to fill time. It's the first 
 ### Setup
 
 ```tsx
-import * as SplashScreen from "expo-splash-screen";
+import * as SplashScreen from 'expo-splash-screen';
 
 // In app entry point, before any render
 SplashScreen.preventAutoHideAsync();
@@ -111,6 +107,8 @@ const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
 Pair with `Haptics.impactAsync(ImpactFeedbackStyle.Heavy)` at the moment content enters — this is the haptic that marks "the app is ready."
 
+**Never**: hide the splash before fonts are loaded. The flash of system font (Helvetica → your custom face) is immediately visible and reads as broken.
+
 ## Permissions Priming
 
 Never trigger a system permission prompt cold. Always show a custom "explain why" screen or sheet first. Users who understand the value grant permission; users who don't should have a graceful fallback path — not a broken feature.
@@ -145,7 +143,7 @@ Front-loading all permissions on launch destroys grant rates. Users with no cont
 If the system prompt is denied, the feature is broken until the user goes to Settings. Don't let that moment be a dead end:
 
 ```tsx
-import { Linking } from "react-native";
+import { Linking } from 'react-native';
 
 // Show a contextual inline prompt, not a blocking alert
 // Message: "[Feature] needs camera access. Enable it in Settings."
@@ -157,7 +155,7 @@ import { Linking } from "react-native";
   accessibilityLabel="Open Settings to enable camera access"
 >
   <Text>Open Settings</Text>
-</Pressable>;
+</Pressable>
 ```
 
 Use `Linking.openSettings()` — deep-links to the app's Settings page on both iOS and Android.
@@ -166,15 +164,15 @@ Check permission status on every feature entry, not just once at install. Users 
 
 ### Permissions Reference
 
-| Permission             | Library                                                       | When to Ask                            |
-| ---------------------- | ------------------------------------------------------------- | -------------------------------------- |
-| Camera                 | `expo-camera` → `Camera.requestCameraPermissionsAsync()`      | First camera tap                       |
-| Photo library          | `expo-image-picker` → `requestMediaLibraryPermissionsAsync()` | First photo attach                     |
-| Microphone             | `expo-av` → `Audio.requestPermissionsAsync()`                 | First record tap                       |
-| Location (when-in-use) | `expo-location` → `requestForegroundPermissionsAsync()`       | First location feature                 |
-| Location (always)      | `expo-location` → `requestBackgroundPermissionsAsync()`       | After when-in-use granted + second ask |
-| Notifications          | `expo-notifications` → `requestPermissionsAsync()`            | After first win                        |
-| Contacts               | `expo-contacts` → `requestPermissionsAsync()`                 | First invite flow                      |
+| Permission | Library | When to Ask |
+|---|---|---|
+| Camera | `expo-camera` → `Camera.requestCameraPermissionsAsync()` | First camera tap |
+| Photo library | `expo-image-picker` → `requestMediaLibraryPermissionsAsync()` | First photo attach |
+| Microphone | `expo-av` → `Audio.requestPermissionsAsync()` | First record tap |
+| Location (when-in-use) | `expo-location` → `requestForegroundPermissionsAsync()` | First location feature |
+| Location (always) | `expo-location` → `requestBackgroundPermissionsAsync()` | After when-in-use granted + second ask |
+| Notifications | `expo-notifications` → `requestPermissionsAsync()` | After first win |
+| Contacts | `expo-contacts` → `requestPermissionsAsync()` | First invite flow |
 
 **Always/when-in-use distinction**: never ask for background location in the first permission ask. Get foreground permission first, use the feature, prove value — then prompt for always-on as a second ask with specific justification ("Enable background location to track your run even when the app is closed").
 
@@ -183,23 +181,22 @@ Check permission status on every feature entry, not just once at install. Users 
 Notification permission is the highest-stakes ask in onboarding. Once denied it's permanently off until the user navigates Settings manually.
 
 Rules:
-
 - Never ask on cold launch. The user has not seen the product's value yet.
 - Ask after the first win — the moment they've completed their first meaningful action.
 - Prime first: show a custom screen explaining exactly what notifications they'd receive and why they're useful. Be specific ("We'll notify you when your order ships, and nothing else").
 - If denied: honor it gracefully. Don't show a repeated in-app prompt. Show the Settings deep-link path only if the user explicitly tries to enable a notification-dependent feature later.
 
 ```tsx
-import * as Notifications from "expo-notifications";
+import * as Notifications from 'expo-notifications';
 
 async function requestNotificationPermission() {
   const { status: existing } = await Notifications.getPermissionsAsync();
-  if (existing === "granted") return true;
-  if (existing === "denied") return false; // already decided; don't re-ask
+  if (existing === 'granted') return true;
+  if (existing === 'denied') return false; // already decided; don't re-ask
 
   // Show priming screen first, then:
   const { status } = await Notifications.requestPermissionsAsync();
-  return status === "granted";
+  return status === 'granted';
 }
 ```
 
@@ -208,7 +205,7 @@ async function requestNotificationPermission() {
 If the app uses analytics or ads: ATT must be primed before the system prompt. The ATT system prompt has the lowest grant rate of any iOS permission — a custom priming screen with honest copy makes a measurable difference.
 
 ```tsx
-import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
+import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
 // Prime → then:
 const { status } = await requestTrackingPermissionsAsync();
 ```
@@ -225,32 +222,29 @@ Users who experience value before being asked to create an account convert at a 
 ### Auth Patterns
 
 **Social sign-in:**
-
 - **Sign in with Apple is required on iOS** if any other social login is offered (App Store Review Guideline 4.8). Implement with `expo-auth-session` or the native SDK.
 - Google Sign-In is common on Android and well-trusted; optional on iOS.
 - Social login is the correct default for consumer apps. Custom email/password is secondary.
 
 ```tsx
-import * as AppleAuthentication from "expo-apple-authentication";
+import * as AppleAuthentication from 'expo-apple-authentication';
 // Conditionally render on iOS only:
-{
-  Platform.OS === "ios" && (
-    <AppleAuthentication.AppleAuthenticationButton
-      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-      cornerRadius={tokens.radius.md}
-      style={{ width: "100%", height: 48 }}
-      onPress={handleAppleSignIn}
-    />
-  );
-}
+{Platform.OS === 'ios' && (
+  <AppleAuthentication.AppleAuthenticationButton
+    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+    cornerRadius={tokens.radius.md}
+    style={{ width: '100%', height: 48 }}
+    onPress={handleAppleSignIn}
+  />
+)}
 ```
 
 **Biometric auth for returning users:**
 `expo-local-authentication` for Face ID / Touch ID / fingerprint. Offer this on first post-login, not forced. The offer screen needs: illustration, explanation of what biometrics unlocks (faster access, no password re-entry), and a clear "Not now" path.
 
 ```tsx
-import * as LocalAuthentication from "expo-local-authentication";
+import * as LocalAuthentication from 'expo-local-authentication';
 
 const hasHardware = await LocalAuthentication.hasHardwareAsync();
 const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -309,10 +303,10 @@ For swipe-to-reveal-actions on list rows: show a sliver (8–16pt) of the action
 On Android, the back button on the first onboarding screen must not exit the app. Use `BackHandler`:
 
 ```tsx
-import { BackHandler } from "react-native";
+import { BackHandler } from 'react-native';
 
 useEffect(() => {
-  const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+  const handler = BackHandler.addEventListener('hardwareBackPress', () => {
     if (isFirstOnboardingScreen) {
       // Optionally show "Exit?" alert, or silently do nothing
       return true; // consume the event
@@ -328,19 +322,15 @@ useEffect(() => {
 Every empty state is a screen. It must have all four:
 
 ### 1. Illustration or Icon
-
 Vector via `react-native-svg`, not a raster PNG. Match the illustration style to the product register — product-register apps get geometric/UI-adjacent illustration; brand-register apps can be warmer. Decorative: `accessibilityElementsHidden={true}` + `importantForAccessibility="no-hide-descendants"`.
 
 ### 2. Headline
-
 What will live here once it's populated. One line. Not "Nothing here yet" — something specific: "Your saved items will appear here."
 
 ### 3. Body Explanation
-
 Why this space matters. One to two sentences. Not a feature description — a benefit statement.
 
 ### 4. Primary CTA
-
 One button. Taps to the action that populates this space. If there's a template option, make it secondary, not co-equal.
 
 ```tsx
@@ -354,7 +344,6 @@ One button. Taps to the action that populates this space. If there's a template 
 ```
 
 **Empty state types**:
-
 - **First use** — user has never created anything here. Emphasize value, offer a template or example
 - **User cleared** — intentionally deleted everything. Light touch, easy to recreate, no guilt
 - **No results** — search or filter returned nothing. Suggest a different query, offer to clear filters
@@ -374,7 +363,7 @@ useEffect(() => {
   shimmerPosition.value = withRepeat(
     withTiming(1, { duration: 1600, easing: Easing.linear }),
     -1,
-    false,
+    false
   );
 }, []);
 
@@ -403,13 +392,11 @@ Placing trust signals too early wastes them. Place them at the exact moment user
 Personalization inputs during onboarding are only worth collecting if they materially change what the user sees. If the answers don't change the first screen, don't ask the questions.
 
 Patterns that earn their place:
-
 - **Goal selection** that determines the default content feed or task type shown
 - **Experience level** that changes the UI density or feature exposure
 - **Use case** (personal / team / enterprise) that changes the default navigation structure
 
 Patterns that don't earn their place:
-
 - Demographic collection "to improve the experience" that doesn't change anything
 - Preference questions answered before the user has seen what they're choosing between
 
@@ -418,17 +405,17 @@ Patterns that don't earn their place:
 ### Tracking First-Run State
 
 ```tsx
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Check + set on first launch
-const hasOnboarded = await AsyncStorage.getItem("onboarding-v2-complete");
+const hasOnboarded = await AsyncStorage.getItem('onboarding-v2-complete');
 if (!hasOnboarded) {
   // show onboarding
-  await AsyncStorage.setItem("onboarding-v2-complete", "true");
+  await AsyncStorage.setItem('onboarding-v2-complete', 'true');
 }
 
 // Track dismissed states per feature
-await AsyncStorage.setItem("coach-mark-swipe-actions-seen", "true");
+await AsyncStorage.setItem('coach-mark-swipe-actions-seen', 'true');
 ```
 
 Version the key (`onboarding-v2-complete`) so a significant product update can re-trigger a targeted re-onboarding without losing the old state.
@@ -443,7 +430,7 @@ Users who leave mid-onboarding and return via a deep link must not be dumped bac
 // In your deep-link handler:
 const onboardingState = await getOnboardingState(); // step reached + permissions granted
 if (!onboardingState.complete) {
-  router.replace("/onboarding", { step: onboardingState.lastStep });
+  router.replace('/onboarding', { step: onboardingState.lastStep });
 }
 ```
 
@@ -452,19 +439,16 @@ Test this explicitly — cold launch, partial state, deep link re-entry are thre
 ## Platform-Specific First-Run
 
 ### iOS
-
 - Sign in with Apple is required if any other social login is offered (App Store Guideline 4.8)
 - ATT prompt must be primed before triggering if analytics/ads are in use
 - `expo-splash-screen` `hideAsync()` after fonts + auth + data — first frame must not flash
 
 ### Android
-
 - `BackHandler` on the first onboarding screen — don't let back exit the app
 - Notification permission is grantable at runtime from Android 13+; below Android 13, it's auto-granted — gate the `requestPermissionsAsync()` call on the SDK version check `expo-notifications` handles internally
 - Material ripple (`android_ripple`) on onboarding CTAs when `Platform Fidelity` is `material-everywhere` or `cupertino-android-pragmatic`
 
 ### Both
-
 - Test VoiceOver (iOS) and TalkBack (Android) end-to-end through the full onboarding flow. Screen readers must be able to complete every step independently
 - Every onboarding screen needs `accessibilityRole` on all interactive elements, logical focus order, and no coach-mark overlay that traps focus without a dismiss mechanism
 
@@ -473,7 +457,6 @@ Test this explicitly — cold launch, partial state, deep link re-entry are thre
 Test on **both platforms**. iOS-only onboarding verification is a Principle IV gate failure.
 
 **Flow integrity**:
-
 - [ ] Full onboarding flow on iOS Simulator (iPhone 15 or current) — cold launch, no cached state
 - [ ] Full onboarding flow on Android Emulator — cold launch, no cached state
 - [ ] Partial onboarding → force quit → relaunch → lands on correct step
@@ -481,33 +464,28 @@ Test on **both platforms**. iOS-only onboarding verification is a Principle IV g
 - [ ] Returning user who already completed onboarding → sees no onboarding screens
 
 **Permissions**:
-
 - [ ] Permission grant path: priming screen → system prompt → granted → feature unlocks
 - [ ] Permission deny path: priming screen → system prompt → denied → graceful fallback with `Linking.openSettings()` CTA
 - [ ] Permission revoked externally (via iOS/Android Settings mid-session) → app handles gracefully on next feature entry
 - [ ] Notification opt-in fires after first win, not on cold launch
 
 **Accessibility**:
-
 - [ ] VoiceOver: full onboarding flow navigable and completable
 - [ ] TalkBack: full onboarding flow navigable and completable
 - [ ] Dynamic Type at 2× — every onboarding screen, no clipped headlines, no truncated CTAs
 - [ ] `useReducedMotion()` respected — onboarding animations substitute a simple fade when true
 
 **Display + layout**:
-
 - [ ] Dynamic Island (iPhone 14/15 Pro) — splash transition does not overlap island
 - [ ] Small screen (iPhone SE or compact Android) — content doesn't scroll behind CTAs
 - [ ] Landscape orientation (if supported) — onboarding layouts hold
 
 **State**:
-
 - [ ] `AsyncStorage` onboarding flag written on completion — not on first screen entry
 - [ ] Coach marks track their shown state — never shown twice
 - [ ] Skip path stores the same completion flag as the full path
 
 **Metrics to check post-launch**:
-
 - D1 retention rate (did onboarding get users to a reason to return?)
 - Permission grant rates by type
 - Time-to-first-value (measured action, not screen completion)
@@ -517,7 +495,6 @@ Test on **both platforms**. iOS-only onboarding verification is a Principle IV g
 When users hit the aha moment fast and don't drop off, hand off to `/impeccable-native polish` for the final pass.
 
 **NEVER**:
-
 - Show the system permission prompt cold (no priming screen)
 - Ask for all permissions on launch
 - Hide the splash before fonts + auth are resolved

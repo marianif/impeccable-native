@@ -1,124 +1,196 @@
-Typography carries most of the information on the page. Replace generic defaults (Inter, Roboto, system fallback at flat scale) with type that reflects the brand and scales with intentional contrast.
+> **Additional context needed**: brand stance (system-font default vs custom family), platform fidelity (`cupertino-android-pragmatic`, `material-everywhere`, `cupertino-everywhere`, `custom-cross-platform`), and whether a `tokens.type` ramp already exists.
+
+Typography carries most of the information on a mobile screen, on a surface a third the size of a laptop. Replace generic defaults (Inter everywhere, a flat 14/16/18 ramp, system fallback at no contrast) with type that reflects the brand, scales with Dynamic Type, and survives the iOS/Android weight divergence.
+
+`/impeccable-native typeset` is the *procedure* for fixing type on a target. The deep lookup — scale tables, platform weight matrix, custom-font loading snippets, `fontVariant` portability, all-caps tracking math — lives in [typography.md](typography.md). Read that file before applying anything here.
+
+Before typesetting: confirm `node .cursor/skills/impeccable-native/scripts/detect-rn-flavor.mjs` has run and that `load-context.mjs` has surfaced `PRODUCT.md` + `DESIGN.md`. The `Platform Fidelity` field and the existing `tokens.type` shape define what changes are allowed.
 
 ---
 
 ## Register
 
-Brand: run the font selection procedure in [brand.md](brand.md). Pairing follows the brand's lane (display serif + sans body for editorial/luxury, one committed sans for tech, etc.). Fluid `clamp()` scale, ≥1.25 ratio between steps.
+**Brand** (portfolio, marketing app, launch experience): pairing follows the brand's lane — display serif + system sans for editorial/luxury, one committed sans for tech, monospace display for technical/builder brands. Hierarchy ratio ≥ 1.33. A custom font is justified because the typography is doing real identity work; accept the loading cost.
 
-Product: system fonts and familiar sans stacks are legitimate here. One well-tuned family typically carries the whole UI. Fixed `rem` scale, 1.125–1.2 ratio between more closely-spaced steps.
+**Product** (dashboards, utilities, social, fintech, productivity): the system font is almost always the right answer. SF Pro on iOS and Roboto on Android are highly tuned, ship with the OS at zero load cost, support Dynamic Type's optical-size variants, and respect every accessibility setting the user has configured. Hierarchy ratio 1.2–1.33 with tighter contrast between adjacent steps. Reach for a custom font only when a specific letterform is doing design work the system font cannot.
+
+If unsure, default to system fonts and put the design budget into hierarchy, weight contrast, and `letterSpacing` discipline instead.
 
 ---
 
 ## Assess Current Typography
 
-Analyze what's weak or generic about the current type:
+Read every screen in scope on iOS Simulator and Android Emulator side by side. Capture a baseline via `node .cursor/skills/impeccable-native/scripts/screenshot.mjs` so the before/after is concrete. Then diagnose:
 
 1. **Font choices**:
-   - Are we using invisible defaults? (Inter, Roboto, Arial, Open Sans, system defaults)
-   - Does the font match the brand personality? (A playful brand shouldn't use a corporate typeface)
-   - Are there too many font families? (More than 2-3 is almost always a mess)
+   - Are we using invisible defaults? (Inter on a brand-led app, Roboto on iOS where SF Pro would carry, a humanist sans on a productivity app "for warmth").
+   - Does the font match the brand register? A playful kids' app on a corporate geometric sans is a tell; a finance app on a friendly rounded display is a different tell.
+   - Are there more than two families? Two is the ceiling on mobile. Three is almost always drift.
+   - If custom: is it loaded via `expo-font` / `@expo-google-fonts` behind a splash-screen gate, or does the app flash system font on first paint?
 
-2. **Hierarchy**:
-   - Can you tell headings from body from captions at a glance?
-   - Are font sizes too close together? (14px, 15px, 16px = muddy hierarchy)
-   - Are weight contrasts strong enough? (Medium vs Regular is barely visible)
+2. **Scale & hierarchy**:
+   - Is there a named role ramp in `tokens.type` (`caption` / `label` / `body` / `title` / `headline` / `display`), or is each screen picking sizes ad hoc?
+   - Are sizes too close to distinguish? `13` / `14` / `15` / `16` reads as muddy on a 6.1" screen.
+   - Are weight contrasts strong enough? `Regular` vs `Medium` is barely visible on Android where Roboto snaps intermediate weights.
+   - Are roles named by role (`body`) or by value (`size16`)? Value-named tokens are a finding.
 
-3. **Sizing & scale**:
-   - Is there a consistent type scale, or are sizes arbitrary?
-   - Does body text meet minimum readability? (16px+)
-   - Is the sizing strategy appropriate for the context? (Fixed `rem` scales for app UIs; fluid `clamp()` for marketing/content page headings)
+3. **Platform divergence**:
+   - Does the design depend on a weight that ships only on iOS? Roboto reliably ships `100` / `300` / `400` / `500` / `700` / `900`; everything else snaps to the nearest available, often invisibly.
+   - Does any italic style differ between platforms (true italic faces on iOS vs mechanical slant on Android)?
+   - If a custom font is in use: are all weights/italics bundled for *both* platforms, or does one platform silently fall back?
 
-4. **Readability**:
-   - Are line lengths comfortable? (45-75 characters ideal)
-   - Is line-height appropriate for the font and context?
-   - Is there enough contrast between text and background?
+4. **Dynamic Type / font scale**:
+   - Does any `<Text>` set `allowFontScaling={false}` without a load-bearing reason? That is an accessibility violation.
+   - Test the surface at 2× iOS Dynamic Type and Android "Largest" font size. What clips, overlaps, or pushes off-screen?
+   - Are headlines and tab labels capped with `maxFontSizeMultiplier` to bound layout damage, or do they break entirely at 310%?
 
-5. **Consistency**:
-   - Are the same elements styled the same way throughout?
-   - Are font weights used consistently? (Not bold in one section, semibold in another for the same role)
-   - Is letter-spacing intentional or default everywhere?
+5. **Numeric & feature details**:
+   - Do digit columns (prices, timers, counters) use `fontVariant: ['tabular-nums']`? Without it, `1.00` and `0.99` are different widths and rows jiggle on update.
+   - Do all-caps labels carry positive `letterSpacing` (0.5–1.5pt, roughly 5–12% of `fontSize`)? Default-spaced uppercase reads as cramped and immature.
 
-**CRITICAL**: The goal isn't to make text "fancier." It's to make it clearer, more readable, and more intentional. Good typography is invisible; bad typography is distracting.
+6. **Readability**:
+   - Is body text at least 16pt for primary reading content?
+   - Is `lineHeight` declared as a total-point literal (`24`) rather than a multiplier (`1.5`)? RN expects the total line-box height in points.
+   - On dark surfaces: has perceived weight been compensated on three axes — `lineHeight +1–2pt`, `letterSpacing +0.2`, weight bumped one notch? Adjusting only one of these still reads as too thin.
+
+7. **Consistency**:
+   - Are same-role elements typeset the same way across screens? A section header at `17/500` here and `18/600` there is drift.
+   - Are intermediate values (e.g. `fontSize: 17`) leaking past the token scale?
+
+**CRITICAL**: the goal isn't to make text fancier. It's to make hierarchy unmistakable, reading comfortable, and the type respectful of every accessibility setting the user has configured. Good mobile typography is invisible; bad mobile typography is the thing the user blames when the app feels off.
+
+---
 
 ## Plan Typography Improvements
 
-Consult the [typography reference](typography.md) for detailed guidance on scales, pairing, and loading strategies.
+Cross-reference [typography.md](typography.md) for the canonical scale table, platform weight matrix, and Dynamic Type guidance. Then write a plan with these elements:
 
-Create a systematic plan:
+- **Font decision**: stay on system fonts, or commit to a custom family with full weight bundles for both platforms?
+- **Token ramp**: define / refine `tokens.type` with role-named entries (`caption`, `label`, `body`, `title`, `headline`, `display`). Five to six roles cover almost every screen.
+- **Weight strategy**: which weights are load-bearing? Stick to `400` / `500` / `700` if the design needs to render identically on both platforms; otherwise document where you accept iOS/Android divergence.
+- **Dynamic Type strategy**: which screens / labels need `maxFontSizeMultiplier` caps? Default is none — let type grow.
+- **Special features**: where does `fontVariant: ['tabular-nums']` apply? Which labels need positive `letterSpacing` for all-caps?
 
-- **Font selection**: Do fonts need replacing? What fits the brand/context?
-- **Type scale**: Establish a modular scale (e.g., 1.25 ratio) with clear hierarchy
-- **Weight strategy**: Which weights serve which roles? (Regular for body, Semibold for labels, Bold for headings, or whatever fits)
-- **Spacing**: Line-heights, letter-spacing, and margins between typographic elements
+Confirm the plan against `Platform Fidelity` from PRODUCT.md before changing tokens. A `cupertino-android-pragmatic` brief tolerates SF/Roboto divergence; `custom-cross-platform` does not.
+
+---
 
 ## Improve Typography Systematically
 
-### Font Selection
+### Font selection
 
-If fonts need replacing:
-- Choose fonts that reflect the brand personality
-- Pair with genuine contrast (serif + sans, geometric + humanist), or use a single family in multiple weights
-- Ensure web font loading doesn't cause layout shift (`font-display: swap`, metric-matched fallbacks)
+If the brief justifies a custom font, load it through `@expo-google-fonts` (or `expo-font` for self-hosted) behind a splash-screen gate:
 
-### Establish Hierarchy
+```tsx
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_700Bold } from '@expo-google-fonts/instrument-sans';
 
-Build a clear type scale:
-- **5 sizes cover most needs**: caption, secondary, body, subheading, heading
-- **Use a consistent ratio** between levels (1.25, 1.333, or 1.5)
-- **Combine dimensions**: Size + weight + color + space for strong hierarchy. Don't rely on size alone
-- **App UIs**: Use a fixed `rem`-based type scale, optionally adjusted at 1-2 breakpoints. Fluid sizing undermines the spatial predictability that dense, container-based layouts need
-- **Marketing / content pages**: Use fluid sizing via `clamp(min, preferred, max)` for headings and display text. Keep body text fixed
+SplashScreen.preventAutoHideAsync();
 
-### Fix Readability
+export default function App() {
+  const [loaded] = useFonts({
+    'InstrumentSans-Regular': InstrumentSans_400Regular,
+    'InstrumentSans-Medium':  InstrumentSans_500Medium,
+    'InstrumentSans-Bold':    InstrumentSans_700Bold,
+  });
 
-- Set `max-width` on text containers using `ch` units (`max-width: 65ch`)
-- Adjust line-height per context: tighter for headings (1.1-1.2), looser for body (1.5-1.7)
-- Increase line-height slightly for light-on-dark text
-- Ensure body text is at least 16px / 1rem
+  useEffect(() => { if (loaded) SplashScreen.hideAsync(); }, [loaded]);
+  if (!loaded) return null;
+  return <YourApp />;
+}
+```
 
-### Refine Details
+Two non-negotiables: every weight you use is loaded as a *distinct family name* (RN does not honor `fontWeight` against a single-file family the way the web does), and the splash screen does not clear until `useFonts` returns `loaded`. Otherwise the first paint flashes system font — the RN equivalent of FOUT, but worse because the layout reflows.
 
-- Use `tabular-nums` for data tables and numbers that should align
-- Apply proper `letter-spacing`: slightly open for small caps and uppercase, default or tight for large display text
-- Use semantic token names (`--text-body`, `--text-heading`), not value names (`--font-16`)
-- Set `font-kerning: normal` and consider OpenType features where appropriate
+Avoid variable fonts. Android support is version-dependent and limited; one weight per file is the portable answer.
 
-### Weight Consistency
+For system-font roles, omit `fontFamily` entirely. RN resolves missing `fontFamily` to SF Pro on iOS and Roboto on Android automatically, with full Dynamic Type behavior.
 
-- Define clear roles for each weight and stick to them
-- Don't use more than 3-4 weights (Regular, Medium, Semibold, Bold is plenty)
-- Load only the weights you actually use (each weight adds to page load)
+### Establish the token ramp
+
+Build `tokens.type` with **role-named entries**, never value-named. Each role declares `fontSize`, `lineHeight` (total points, not a multiplier), `fontWeight` as a string literal with `as const`, and optionally `letterSpacing` and `fontFamily`:
+
+```ts
+type: {
+  caption:  { fontSize: 12, lineHeight: 16, fontWeight: '400' as const },
+  label:    { fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0.2 },
+  body:     { fontSize: 16, lineHeight: 24, fontWeight: '400' as const },
+  title:    { fontSize: 18, lineHeight: 26, fontWeight: '600' as const },
+  headline: { fontSize: 24, lineHeight: 30, fontWeight: '700' as const },
+  display:  { fontSize: 36, lineHeight: 42, fontWeight: '700' as const, fontFamily: 'InstrumentSerif-Italic' },
+}
+```
+
+Combine dimensions (size + weight + color + space) for hierarchy. Don't rely on size alone — on a 390pt screen, the difference between 14 and 16 is barely perceptible without weight or color contrast backing it up.
+
+### Honor platform weight reality
+
+The single biggest typography failure on RN is "I designed at weight `600` and it looks right on iOS and wrong on Android." See [typography.md](typography.md) for the full matrix; the short version:
+
+- SF Pro ships `100` through `900` in clean steps with true italic faces.
+- Roboto reliably ships `100`, `300`, `400`, `500`, `700`, `900`; intermediate values snap to the nearest available, sometimes invisibly.
+- Italics on Android are a mechanical slant on most weights; iOS has true italic faces.
+
+If the design demands cross-platform identity, restrict to `400` / `500` / `700` or ship a custom font with full weight bundles. Otherwise document the divergence as intentional under `cupertino-android-pragmatic`.
+
+### Dynamic Type discipline
+
+Every `<Text>` respects `allowFontScaling` (default `true`). **Never blanket-disable.** Disabling Dynamic Type is an accessibility violation and a common AI tell.
+
+The real work is making layouts survive the scale-up:
+
+- Titles that must fit one line get `numberOfLines={1}` + `ellipsizeMode="tail"`.
+- Body paragraphs stay unbounded; they reflow.
+- Tab labels, FAB labels, and tightly-fitted CTAs cap with `maxFontSizeMultiplier={1.4}` rather than disabling scaling.
+
+```tsx
+<Text style={tokens.type.label} numberOfLines={1} ellipsizeMode="tail" maxFontSizeMultiplier={1.4}>
+  Settings
+</Text>
+```
+
+Test every screen at 2× iOS Dynamic Type (Simulator → I/O → Toggle Larger Accessibility Sizes) and Android "Largest" (Emulator → Settings → Display → Font size). Defects are real bugs, not stylistic remarks.
+
+### Refine details
+
+- **Tabular numbers**: `fontVariant: ['tabular-nums']` on prices, timers, counters, scoreboards — anywhere digits update in place. Without it, the row twitches.
+- **All-caps tracking**: positive `letterSpacing` (0.5–1.5pt, ~5–12% of fontSize) on short uppercase labels (eyebrows, button text, section headers). Don't `textTransform: 'uppercase'` body paragraphs — uppercase is for emphasis, not reading.
+- **Dark-mode compensation**: when type flips to light-on-dark, bump `lineHeight` by 1–2pt, add `letterSpacing: 0.2`, step weight up one notch. Adjust all three or it reads as too thin.
+- **Measure**: on phone, let the natural 30–40 character measure win. On tablet, cap content width with `maxWidth` so a long-form screen doesn't blow past 75ch on iPad.
+
+### Weight consistency
+
+- Define one weight per role and stick to it. Don't use `Semibold` for "title" on one screen and `Bold` for "title" on another.
+- 3–4 weights cover almost every UI. Load only what you actually use — every weight is a separate file and a real bundle cost.
 
 **NEVER**:
-- Use more than 2-3 font families
-- Pick sizes arbitrarily; commit to a scale
-- Set body text below 16px
-- Use decorative/display fonts for body text
-- Disable browser zoom (`user-scalable=no`)
-- Use `px` for font sizes; use `rem` to respect user settings
-- Default to Inter/Roboto/Open Sans when personality matters
-- Pair fonts that are similar but not identical (two geometric sans-serifs)
+- Use more than 2 font families per app.
+- Use `lineHeight` as a multiplier (`1.5`). RN expects the total line box in points (`24`).
+- Set `allowFontScaling={false}` without an explicit, documented layout reason (and even then, prefer `maxFontSizeMultiplier`).
+- Ship custom fonts that load after the splash clears.
+- Ship variable fonts and assume Android renders them.
+- Pair two similar-but-not-identical sans-serifs (Inter + SF Pro, Manrope + Geist).
+- Set body text below 16pt for primary reading content.
+- Name tokens by value (`size16`, `font14`). Use roles.
+- Forget `fontVariant: ['tabular-nums']` on digit columns.
+- Forget positive `letterSpacing` on all-caps labels.
+- Assume `fontWeight: '600'` looks the same on iOS and Android.
+
+---
 
 ## Verify Typography Improvements
 
-- **Hierarchy**: Can you identify heading vs body vs caption instantly?
-- **Readability**: Is body text comfortable to read in long passages?
-- **Consistency**: Are same-role elements styled identically throughout?
-- **Personality**: Does the typography reflect the brand?
-- **Performance**: Are web fonts loading efficiently without layout shift?
-- **Accessibility**: Does text meet WCAG contrast ratios? Is it zoomable to 200%?
+Verify each item on **both** iOS Simulator and Android Emulator. A clean run on one platform is not evidence; Constitution Principle IV makes parity unskippable.
 
-When the type carries the hierarchy on its own, hand off to `/impeccable polish` for the final pass.
+- **Hierarchy**: can you identify caption / body / title / headline at a glance, on both platforms?
+- **Token discipline**: every `<Text>` reads `tokens.type.<role>`. No raw `fontSize: 17` or `lineHeight: 1.5` literals remain. (`node .cursor/skills/impeccable-native/scripts/extract-tokens.mjs --dry-run` surfaces leakage.)
+- **Custom-font gate**: first paint shows the brand font, not system fallback. The splash screen holds until `useFonts` returns `loaded`.
+- **Weight parity**: every load-bearing weight renders identically on iOS and Android, or the divergence is documented as intentional.
+- **Dynamic Type survives**: at 2× iOS / Largest Android, nothing clips, overlaps, or pushes content off-screen. Caps via `maxFontSizeMultiplier` are scoped to the labels that genuinely need them.
+- **`allowFontScaling` audit**: no blanket `false`. Any `false` instance has a justifying comment.
+- **Numbers**: every digit column carries `fontVariant: ['tabular-nums']`. Updating values do not twitch.
+- **All-caps**: every uppercase label carries positive `letterSpacing`.
+- **Dark-mode pass**: light-on-dark text has been compensated on `lineHeight`, `letterSpacing`, and weight. Reads at the same density as the light-mode equivalent.
+- **VoiceOver + TalkBack**: screen titles carry `accessibilityRole="header"`. Decorative or abbreviated text (`$1.2k`) carries a full `accessibilityLabel`.
 
-## Live-mode signature params
-
-Each variant MUST declare a `scale` param controlling the hierarchy ratio. Express all font sizes in the variant's scoped CSS through `calc(var(--p-scale, 1) * <base>)` or, better, scale the type ramp via `clamp(min, calc(var(--p-scale, 1) * Npx), max)`. Users slide from subdued to commanding.
-
-```json
-{"id":"scale","kind":"range","min":0.85,"max":1.3,"step":0.05,"default":1,"label":"Scale"}
-```
-
-Where the variant riffs on a specific pairing, expose the pairing choice as a `steps` param (e.g. "serif display + sans body" vs. "mono display + sans body" vs. "all-sans"). Each branch routes through `:scope[data-p-pairing="X"]` selectors in scoped CSS.
-
-See `reference/live.md` for the full params contract.
+When the type carries the hierarchy on its own, hand off to `/impeccable-native polish` for the final pass.

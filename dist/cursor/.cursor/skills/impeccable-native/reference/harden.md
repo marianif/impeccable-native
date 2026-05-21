@@ -40,11 +40,8 @@ Before hardening, survey the surface for known mobile failure vectors:
    - Empty state (zero items, no results, no notifications)
    - Single item
    - Very long strings: names > 60 chars, emails, URLs, descriptions > 500 chars
-   - Emoji, CJK characters, RTL text (Arabic, Hebrew) in all text inputs and rendered cells
-   - Large numbers (millions, elapsed durations, long price strings)
+   - Emoji, CJK characters
    - Many items (500+ list rows)
-
-**CRITICAL**: iOS-only testing is itself a hardening failure. Every check below covers both platforms. If only one platform was inspected, that is a P0 finding per Constitution Principle IV.
 
 ---
 
@@ -70,10 +67,10 @@ Every screen, tab bar, sticky header, modal sheet, FAB, and bottom CTA must clea
 **Status bar style per screen**:
 
 ```tsx
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from "expo-status-bar";
 
 // In each screen component:
-<StatusBar style="light" />  // or "dark", "auto"
+<StatusBar style="light" />; // or "dark", "auto"
 ```
 
 A modal over a light surface that inherits the host screen's `light` status bar style will show white text on white — invisible. Set `StatusBar` explicitly on every distinct screen type.
@@ -101,16 +98,14 @@ The single most commonly broken hardening dimension on both platforms.
 **Platform-correct `behavior`**:
 
 ```tsx
-import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 
 <KeyboardAvoidingView
-  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
   style={{ flex: 1 }}
 >
-  <ScrollView keyboardShouldPersistTaps="handled">
-    {/* inputs */}
-  </ScrollView>
-</KeyboardAvoidingView>
+  <ScrollView keyboardShouldPersistTaps="handled">{/* inputs */}</ScrollView>
+</KeyboardAvoidingView>;
 ```
 
 `behavior="padding"` on iOS adds padding below the scroll content, pushing it up. `behavior="height"` on Android shrinks the container height. Using the wrong one for the wrong platform produces inputs that slide under the keyboard and are unreachable.
@@ -145,14 +140,14 @@ Every form must be completable without dismissing the keyboard manually. "Next" 
 
 **`keyboardType` / `autoComplete` / `textContentType` correctness**:
 
-| Input type | `keyboardType` | `autoComplete` | `textContentType` |
-|---|---|---|---|
-| Email | `"email-address"` | `"email"` | `"emailAddress"` |
-| Current password | `"default"` | `"current-password"` | `"password"` |
-| New password | `"default"` | `"new-password"` | `"newPassword"` |
-| Phone | `"phone-pad"` | `"tel"` | `"telephoneNumber"` |
-| Postal code | `"numbers-and-punctuation"` | `"postal-code"` | `"postalCode"` |
-| SMS OTP | `"number-pad"` | `"one-time-code"` | `"oneTimeCode"` |
+| Input type       | `keyboardType`              | `autoComplete`       | `textContentType`   |
+| ---------------- | --------------------------- | -------------------- | ------------------- |
+| Email            | `"email-address"`           | `"email"`            | `"emailAddress"`    |
+| Current password | `"default"`                 | `"current-password"` | `"password"`        |
+| New password     | `"default"`                 | `"new-password"`     | `"newPassword"`     |
+| Phone            | `"phone-pad"`               | `"tel"`              | `"telephoneNumber"` |
+| Postal code      | `"numbers-and-punctuation"` | `"postal-code"`      | `"postalCode"`      |
+| SMS OTP          | `"number-pad"`              | `"one-time-code"`    | `"oneTimeCode"`     |
 
 The OTP one is especially high-value: `textContentType="oneTimeCode"` on iOS surfaces the SMS code as a QuickType banner — the user never has to leave the app. Missing it is a real UX cost.
 
@@ -165,10 +160,10 @@ The OTP one is especially high-value: `textContentType="oneTimeCode"` on iOS sur
 **Connectivity detection**:
 
 ```tsx
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo from "@react-native-community/netinfo";
 
 useEffect(() => {
-  const unsubscribe = NetInfo.addEventListener(state => {
+  const unsubscribe = NetInfo.addEventListener((state) => {
     setIsOffline(!state.isConnected);
   });
   return unsubscribe;
@@ -176,36 +171,37 @@ useEffect(() => {
 ```
 
 When offline:
+
 - Surface an **inline banner** (not a full-screen error) if the screen has cached content to show. "You're offline — showing saved data" is more useful than a blank error screen.
 - Surface a **full-screen empty state** only if the screen has no cacheable content and cannot function at all without network.
 - Never crash or throw an unhandled promise rejection on connectivity loss.
 
 **Slow connection (3G-equivalent)**:
+
 - Use **skeleton screens** for layouts with known shapes (lists, profile cards, feed rows). A skeleton with a shimmer animation (Reanimated-driven `LinearGradient` sweep at 1500–2000ms per pass) primes layout muscle memory while loading.
 - Use a **spinner** only when the layout shape is unknown, the wait is genuinely indeterminate (< 1s expected), or it's a background sync indicator.
 - Use `expo-image` with a `blurhash` placeholder for hero images so the layout stabilizes immediately:
 
 ```tsx
-import { Image } from 'expo-image';
+import { Image } from "expo-image";
 
 <Image
   source={{ uri: imageUrl }}
   placeholder={{ blurhash: item.blurhash }}
   contentFit="cover"
   style={styles.hero}
-/>
+/>;
 ```
 
 **Request timeout and retry**:
 
 ```tsx
 // Show error with retry CTA — never just a spinner that hangs indefinitely
-{isError && (
-  <ErrorBanner
-    message="Couldn't load your orders."
-    onRetry={refetch}
-  />
-)}
+{
+  isError && (
+    <ErrorBanner message="Couldn't load your orders." onRetry={refetch} />
+  );
+}
 ```
 
 Every async operation has three states designed: loading, error with retry, and success (or empty). A loading spinner with no error path is a finding.
@@ -237,17 +233,20 @@ These edge cases don't exist on the web. Every one of them must be tested.
 **Background-to-foreground data refresh**:
 
 ```tsx
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus } from "react-native";
 
 useEffect(() => {
-  const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
-    if (nextState === 'active') {
-      // Re-check session validity
-      if (isSessionExpired()) redirectToLogin();
-      // Refresh stale data (e.g. if backgrounded > 5 min)
-      if (dataIsStale()) refetch();
-    }
-  });
+  const subscription = AppState.addEventListener(
+    "change",
+    (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        // Re-check session validity
+        if (isSessionExpired()) redirectToLogin();
+        // Refresh stale data (e.g. if backgrounded > 5 min)
+        if (dataIsStale()) refetch();
+      }
+    },
+  );
   return () => subscription.remove();
 }, []);
 ```
@@ -257,6 +256,7 @@ A screen that was backgrounded for 10 minutes and comes back showing stale price
 **App killed and restored** (navigation state persistence):
 
 Expo Router persists navigation state by default when `EXPO_PUBLIC_USE_METRO_WORKSPACE` is active in development. In production, verify that:
+
 - Navigating to a screen, killing the app, and reopening restores the user to that screen (not always the root).
 - If restoring to a screen requires auth and the session expired, the restoration redirects to login and then returns to the original destination after auth.
 - No screen crashes on cold-start re-entry because it assumed `route.params` would be populated (always guard params).
@@ -266,14 +266,16 @@ Expo Router persists navigation state by default when `EXPO_PUBLIC_USE_METRO_WOR
 When the app is backgrounded and the user taps a push notification, the app must navigate to the relevant content — not the home tab. This requires a notification listener registered at the root:
 
 ```tsx
-import * as Notifications from 'expo-notifications';
+import * as Notifications from "expo-notifications";
 
 // In App root:
 useEffect(() => {
-  const sub = Notifications.addNotificationResponseReceivedListener(response => {
-    const { screen, params } = response.notification.request.content.data;
-    router.push({ pathname: screen, params });
-  });
+  const sub = Notifications.addNotificationResponseReceivedListener(
+    (response) => {
+      const { screen, params } = response.notification.request.content.data;
+      router.push({ pathname: screen, params });
+    },
+  );
   return () => sub.remove();
 }, []);
 ```
@@ -283,10 +285,10 @@ If the notification tap lands on the home tab every time, the deep navigation is
 **Permission revoked mid-session**:
 
 ```tsx
-AppState.addEventListener('change', async (nextState) => {
-  if (nextState === 'active') {
+AppState.addEventListener("change", async (nextState) => {
+  if (nextState === "active") {
     const { status } = await Camera.getCameraPermissionsAsync();
-    if (status !== 'granted' && wasPreviouslyGranted) {
+    if (status !== "granted" && wasPreviouslyGranted) {
       // Don't crash. Show a graceful inline prompt.
       setShowPermissionPrompt(true);
     }
@@ -300,7 +302,7 @@ Camera, location, and notification permissions can be revoked in iOS Settings wh
 
 ```tsx
 useEffect(() => {
-  const sub = AppState.addEventListener('memoryWarning', () => {
+  const sub = AppState.addEventListener("memoryWarning", () => {
     // Clear large in-memory caches
     clearImageCache();
     clearPaginatedDataBeyondPage(2);
@@ -323,13 +325,13 @@ The canonical pattern: attempt to navigate to the deep-linked screen → detect 
 // On deep link received:
 if (!isAuthenticated) {
   setPendingRoute(incomingRoute);
-  router.replace('/login');
+  router.replace("/login");
 }
 
 // After successful login:
 const pending = consumePendingRoute();
 if (pending) router.replace(pending);
-else router.replace('/(tabs)');
+else router.replace("/(tabs)");
 ```
 
 **Deep link to deleted/expired resource**:
@@ -341,7 +343,7 @@ if (isError && error.status === 404) {
     <EmptyState
       title="This content is no longer available"
       description="It may have been removed or the link has expired."
-      action={{ label: 'Go home', onPress: () => router.replace('/(tabs)') }}
+      action={{ label: "Go home", onPress: () => router.replace("/(tabs)") }}
     />
   );
 }
@@ -352,15 +354,16 @@ A blank screen or an unhandled crash on a 404 deep link is a hardening failure. 
 **Android hardware/gesture back**:
 
 Every screen must handle Android back correctly. The defaults from `react-navigation` / Expo Router cover most cases, but custom `BackHandler` is required when:
+
 - A bottom sheet is open (pressing back should close the sheet, not pop the screen)
 - An in-progress form has unsaved data (pressing back should prompt or auto-save)
 - The app would navigate out entirely (pressing back on the root tab should minimize, not crash)
 
 ```tsx
-import { BackHandler } from 'react-native';
+import { BackHandler } from "react-native";
 
 useEffect(() => {
-  const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+  const sub = BackHandler.addEventListener("hardwareBackPress", () => {
     if (sheetIsOpen) {
       closeSheet();
       return true; // consumed
@@ -373,11 +376,11 @@ useEffect(() => {
 
 **Sheet / modal dismiss — all three paths must close**:
 
-| Path | Mechanism |
-|---|---|
-| Swipe down | `@gorhom/bottom-sheet` pan gesture with velocity threshold |
-| Android back | `BackHandler` returning `true` and calling `dismiss()` |
-| Tap outside | `Backdrop` with `onPress={dismiss}` |
+| Path         | Mechanism                                                  |
+| ------------ | ---------------------------------------------------------- |
+| Swipe down   | `@gorhom/bottom-sheet` pan gesture with velocity threshold |
+| Android back | `BackHandler` returning `true` and calling `dismiss()`     |
+| Tap outside  | `Backdrop` with `onPress={dismiss}`                        |
 
 A sheet that only closes via the swipe but not via Android back is a P0 finding on Android.
 
@@ -404,6 +407,7 @@ RN has no CSS `text-overflow: ellipsis`. `numberOfLines` + `ellipsizeMode` is th
 **i18n and RTL**:
 
 RN has built-in RTL support via `I18nManager.isRTL`. When RTL is active:
+
 - `StyleSheet` values for `marginLeft`/`marginRight`, `paddingLeft`/`paddingRight`, and `borderLeftWidth`/`borderRightWidth` do **not** automatically flip — you must use `marginStart`/`marginEnd` (logical properties) or handle them via `I18nManager.isRTL` conditionals.
 - Chevron icons (→) must mirror. Use a `scaleX: -1` transform when RTL.
 - Test with Arabic or Hebrew device locale to catch layout breaks.
@@ -414,14 +418,16 @@ RN has built-in RTL support via `I18nManager.isRTL`. When RTL is active:
 
 ```tsx
 // ✅ Use Intl — available on Hermes
-new Intl.DateTimeFormat('de-DE').format(date);
-new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+new Intl.DateTimeFormat("de-DE").format(date);
+new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+  amount,
+);
 
 // ✅ Pluralization via i18n library
-t('items', { count }); // handles complex plural rules across locales
+t("items", { count }); // handles complex plural rules across locales
 
 // ❌ Never
-`${count} item${count !== 1 ? 's' : ''}` // English-only pluralization
+`${count} item${count !== 1 ? "s" : ""}`; // English-only pluralization
 ```
 
 **Empty, single, and large list states**: every `FlatList` / `SectionList` must declare a `ListEmptyComponent`. A blank white screen where the list should be is not an empty state. For large lists (500+ items), verify `getItemLayout` is set (when row height is fixed) and `windowSize` is tuned — otherwise the first scroll is janky.
@@ -449,6 +455,7 @@ t('items', { count }); // handles complex plural rules across locales
 **Focus trap in sheets and modals**: when a bottom sheet or modal opens, VoiceOver focus must move into it and be confined until dismissal. When dismissed, focus must return to the trigger element. The user must not be able to swipe-focus behind a modal backdrop.
 
 **VoiceOver ↔ TalkBack parity**: test the same critical flows on both. The screen that reads clean on VoiceOver can be a mess on TalkBack. Specific divergences to check:
+
 - TalkBack phrasing: "double-tap to activate" vs VoiceOver's "tap"
 - `accessibilityLiveRegion` (Android) fires where needed for dynamic content changes
 - Custom swipe actions declared via `accessibilityActions` work on both platforms
@@ -456,7 +463,7 @@ t('items', { count }); // handles complex plural rules across locales
 **`useReducedMotion()` respected**:
 
 ```tsx
-import { useReducedMotion } from 'react-native-reanimated';
+import { useReducedMotion } from "react-native-reanimated";
 
 const reducedMotion = useReducedMotion();
 
@@ -478,30 +485,35 @@ const animatedStyle = useAnimatedStyle(() => ({
 Run through each of these manually. No automated test replaces on-device verification.
 
 **Device & layout**:
+
 - [ ] Open the screen on iPhone SE 3rd gen (375×667 pt) — no overflow, no unreachable CTAs
 - [ ] Open on a notch/Dynamic Island device — status bar and header clear the notch
 - [ ] Open on iPad (if in scope) — layout adapts, no stretched single-column content
 - [ ] Rotate to landscape (if in scope) — layout holds, no clipped controls
 
 **Keyboard**:
+
 - [ ] Focus the first input, tab through all inputs to submit using only the keyboard — no manual taps needed
 - [ ] Open the screen on iPhone SE with the keyboard raised — every input visible above the keyboard
 - [ ] Tap a button while keyboard is open — button responds, keyboard does not consume the tap
 - [ ] Verify `keyboardType`, `autoComplete`, `textContentType` on every input field
 
 **Network & offline**:
+
 - [ ] Enable airplane mode while on the screen — inline banner, no crash, cached data visible if any
 - [ ] Throttle to 3G (Proxyman, iOS Network Link Conditioner, or Android Developer Options) — skeletons appear, images show blurhash, no blank white flash
 - [ ] Kill the network mid-mutation — rollback fires, toast shown, no silent data loss
 - [ ] Re-enable network — screen recovers without requiring a full app restart
 
 **App lifecycle**:
+
 - [ ] Background the app for 10+ minutes, re-foreground — data refreshed or stale banner shown, session re-checked
 - [ ] Kill the app from the app switcher, reopen — navigation state restored to the last screen
 - [ ] Tap a push notification while app is backgrounded — lands on the relevant screen, not the home tab
 - [ ] Revoke camera/location permission in Settings while the app is open, re-foreground — graceful prompt, no crash
 
 **Navigation & deep links**:
+
 - [ ] Open a deep link while unauthenticated — redirected to login, then to the original destination after auth
 - [ ] Open a deep link to a deleted resource — graceful "no longer available" empty state, not a crash
 - [ ] Android: press hardware back from every screen in the test flow — correct behavior, no leaking out of the app
@@ -509,12 +521,14 @@ Run through each of these manually. No automated test replaces on-device verific
 - [ ] Swipe-down on a bottom sheet — closes; tap outside the sheet — closes
 
 **Content edge cases**:
+
 - [ ] Paste a 200-character name into every text field and list row — truncation fires, no overflow
 - [ ] Enter Arabic or Hebrew text — layout mirrors correctly, no RTL visual breaks
 - [ ] Empty every list — `ListEmptyComponent` renders, not a blank screen
 - [ ] Navigate to 1000+ item list — no initial jank, scrolling is smooth
 
 **Accessibility**:
+
 - [ ] VoiceOver (iOS): navigate every interactive element — roles announced, labels read, states correct, no stuck focus
 - [ ] TalkBack (Android): same flow — parity with VoiceOver, `accessibilityLiveRegion` fires for dynamic changes
 - [ ] Dynamic Type 2×: every screen — no clipped text, no overlapping rows, containers expand
@@ -534,6 +548,7 @@ HARDENING PRIORITIES BY FAILURE FREQUENCY
 7. Deep link to 404 crashes — resource-level error states missing
 
 NEVER:
+
 - Assume the happy path is the only path
 - Hardcode paddingTop: 44 or paddingBottom: 34
 - Ship a form without testing KeyboardAvoidingView on both platforms
@@ -541,4 +556,4 @@ NEVER:
 - Test accessibility on VoiceOver only — TalkBack parity is a Constitution Principle IV requirement
 - Use AppState without cleaning up the subscription in useEffect return
 - Ignore the iPhone SE — 375pt is still a real device in production traffic
-</codex>
+  </codex>
