@@ -83,7 +83,7 @@ RN-specific tooling under `skill/scripts/`. The web `live-*.mjs` subsystem is dr
 | `extract-tokens.mjs` | ✅ | Scans `.ts`/`.tsx` (ignores `node_modules`/`ios`/`android`/`.expo`). Buckets duplicated literals — hex/rgba colors, sizes, radii, durations — grouped by value, ranked by count, filtered at `--min-count` (default 3). `--dry-run`/`--dir=` flags. JSON to stdout. Referenced by `extract.md`, `distill.md`, `document.md`, `critique.md`. |
 | `platform-parity.mjs` | ✅ | 5 static iOS/Android divergence rules: PP001 `shadowColor` w/o `elevation` (error), PP002 `elevation` w/o `shadowColor` (warn), PP003 `KeyboardAvoidingView` behavior not platform-split (error/warn), PP004 haptics call w/o iOS guard (warn), PP005 iOS-only shadow props outside `Platform.select` (warn). `--file=`/`--dir=` flags, fast-path skip, exit 1 on errors. Referenced by `critique.md`, `audit.md`. |
 | `a11y-audit.mjs` | ✅ | 5 static a11y rules: A11Y001 interactive w/o `accessibilityRole` (error), A11Y002 icon-only control w/o label or text child (error), A11Y003 `Image`/`FastImage` neither labeled nor hidden (warn/error), A11Y004 `role="button"` with no name (error), A11Y005 `TextInput` placeholder-as-label (warn). Depth-bounded `hasTextChild` (subtree-scoped, fixed sibling-`<Text>` leak). Skips a11y-hidden elements. Exit 1 on errors. Referenced by `critique.md`, `audit.md`. |
-| `screenshot.mjs` | ⬜ | Wraps `xcrun simctl io booted screenshot` (iOS) + `adb exec-out screencap` (Android) so Claude can request deterministic simulator captures — the partial replacement for `live`. Must be fault-tolerant: clear "boot a simulator first" message when no device/tool is found, not a stack trace. Referenced by `critique.md` (Assessment A reads iOS+Android, light/dark, Dynamic Type 2× screenshots). |
+| `screenshot.mjs` | ✅ | Wraps `xcrun simctl io booted screenshot` (iOS) + `adb exec-out screencap -p` (Android). Fault-tolerant: checks tool existence (`xcrun`/`adb`), checks for booted device, returns actionable `hint` strings (not stack traces) for each failure mode. `--platform=ios\|android\|both`, `--out=dir`, `--name=label`. JSON to stdout with `screenshots[]` + `errors[]` + `summary`. Exit 1 only if nothing captured at all — partial success (one platform up, one down) exits 0. Output dir auto-created at `.impeccable/screenshots`. Referenced by `critique.md` Assessment A (iOS+Android, light/dark, Dynamic Type 2× captures). |
 
 ---
 
@@ -131,6 +131,6 @@ These are consulted by command references, not user-invocable themselves.
 
 **Status: functionally complete for React Native.** All load-bearing commands rewritten.
 
-**Scripts (Phase 5): 4 of 5 done** — `detect-rn-flavor`, `extract-tokens`, `platform-parity`, `a11y-audit` shipped and synced (12 script files in build). Remaining: `screenshot.mjs` (simulator/emulator capture, fault-tolerant).
+**Scripts (Phase 5): 5 of 5 done** — `detect-rn-flavor`, `extract-tokens`, `platform-parity`, `a11y-audit`, `screenshot` all shipped and synced (13 script files in build).
 
 **Reference remaining (optional):** `brand.md` (add mobile reflex-reject lanes — Material 3 defaults, Cupertino-cream, neon-on-black AI app) and `product.md` (swap tool examples to mobile: Things/Linear-mobile/Fantastical). Neither blocks; both are polish.
