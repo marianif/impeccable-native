@@ -1,8 +1,8 @@
 # impeccable-native
 
-**React Native design fluency for AI coding agents.** A senior product designer + mobile engineer hybrid, delivered as a single Claude Code / Cursor skill with 22 commands. It reads your project's brand and design context and produces real, production-quality React Native code — not generic AI-tool defaults.
+**React Native design fluency for AI coding agents.** Think of it as a senior product designer and mobile engineer fused into a single Claude Code / Cursor skill — one that reads your project's actual brand and design context, then writes production-quality React Native code that fits your app. Not generic AI defaults. Not boilerplate. Your design, in code.
 
-Hard fork of [impeccable](https://github.com/pbakaus/impeccable), rewritten end-to-end for mobile-first work with Expo and bare React Native.
+Hard fork of [impeccable](https://github.com/pbakaus/impeccable), rewritten end-to-end for mobile-first work with Expo and bare React Native. 22 commands covering the full design-to-ship loop — from first-pass critique to accessibility audit to Reanimated motion to dark-mode polish.
 
 Type `/impeccable-native` in Claude Code to start.
 
@@ -10,7 +10,7 @@ Type `/impeccable-native` in Claude Code to start.
 
 ## What it does
 
-It's a **design vocabulary**, not a code generator or a linter. It teaches the harness how to *think* about React Native design decisions — visual hierarchy, touch targets, safe areas, platform parity, motion, theming, accessibility — and then writes code that honors those decisions.
+It's a **design vocabulary**, not a code generator or a linter. It teaches the harness how to _think_ about React Native design decisions — visual hierarchy, touch targets, safe areas, platform parity, motion, theming, accessibility — and then writes code that honors those decisions.
 
 What makes it mobile-native, versus the web original:
 
@@ -24,13 +24,13 @@ What makes it mobile-native, versus the web original:
 
 ## Commands
 
-| Category | Commands |
-|---|---|
-| Build | `craft` `shape` `teach` `document` `extract` |
-| Evaluate | `critique` `audit` |
-| Refine | `polish` `bolder` `quieter` `distill` `harden` `onboard` |
-| Enhance | `animate` `colorize` `typeset` `layout` `delight` `overdrive` |
-| Fix | `clarify` `adapt` `optimize` |
+| Category | Commands                                                      |
+| -------- | ------------------------------------------------------------- |
+| Build    | `craft` `shape` `teach` `document` `extract` `rethink`        |
+| Evaluate | `critique` `audit`                                            |
+| Refine   | `polish` `bolder` `quieter` `distill` `harden` `onboard`      |
+| Enhance  | `animate` `colorize` `typeset` `layout` `delight` `overdrive` |
+| Fix      | `clarify` `adapt` `optimize`                                  |
 
 Run any of them as `/impeccable-native <command>` — e.g. `/impeccable-native craft`, `/impeccable-native audit`, `/impeccable-native critique`.
 
@@ -45,18 +45,18 @@ Add the marketplace, then install the plugin:
 
 Or manually copy `.claude/skills/impeccable-native/` into your own project's `.claude/skills/`.
 
-## Try it locally before publishing
+## Try it from source
 
-Want to dogfood it in your own React Native app first? Two ways:
+Want to run the skill directly from the cloned repo — useful if you're tweaking commands or contributing? Two ways:
 
-**Option A — point Claude Code at the source dir.** From your RN app, add this repo as a local marketplace:
+**Option A — point Claude Code at the cloned dir.** From your RN app, add the local clone as a marketplace:
 
 ```
-/plugin marketplace add /Users/federicamariani/Desktop/impeccable-native
+/plugin marketplace add /path/to/impeccable-native
 /plugin install impeccable-native
 ```
 
-Claude Code reads the built `.claude/skills/` directly, so changes here show up after a rebuild.
+Claude Code reads the built `.claude/skills/` directly, so edits here show up after a rebuild.
 
 **Option B — copy the built skill in.** Build, then drop the compiled skill into your app:
 
@@ -95,13 +95,11 @@ Editing files under `skill/` requires a rebuild to propagate. The build is fast 
 
 ## How it was built
 
-impeccable-native was forked, stripped, rebuilt, and extended in a **36-hour sprint** across 34 sessions — 149 recorded observations, two calendar days. The full technical narrative lives in [`journey-into-impeccable-native.md`](./journey-into-impeccable-native.md). The short version:
-
-**It began with an inheritance, not a blank slate.** The parent `impeccable` skill was an opinionated *web* design tool — CSS Grid, browser flexbox, YAML tokens, a "warm-paper editorial aesthetic with committed magenta." The founding question was whether those opinions could survive translation into the idiom of React Native and Expo.
+**It began with an inheritance, not a blank slate.** The parent `impeccable` skill was an opinionated _web_ design tool — CSS Grid, browser flexbox, YAML tokens, a "warm-paper editorial aesthetic with committed magenta." The founding question was whether those opinions could survive translation into the idiom of React Native and Expo.
 
 **Phase 0 was demolition before construction.** Rather than gradually migrate, the project executed a clean hard fork: the web surface, nine non-target harness providers, the browser-overlay live mode, the CLI, and the multi-provider build system were all stripped — in one eight-minute burst of 20 observations — before a single line of mobile-specific content was written. "Clean room before you paint." This proved to be the most consequential architectural call: every later rewrite was unambiguous because there was no legacy web content to work around.
 
-**Phase 1 rebuilt the foundation** — SKILL.md, the design laws, the command router — reframing the whole thing as a *vocabulary delivery system*. (Not without friction: an early SKILL.md write silently failed to persist three times, the project's first lesson in verifying the filesystem against the agent's belief about it.)
+**Phase 1 rebuilt the foundation** — SKILL.md, the design laws, the command router — reframing the whole thing as a _vocabulary delivery system_. (Not without friction: an early SKILL.md write silently failed to persist three times, the project's first lesson in verifying the filesystem against the agent's belief about it.)
 
 **Phase 2 was the bulk of the work**: migrating 29 reference files from web to mobile, file by file, tracked in `MIGRATION.md`. Two breakthroughs defined it — replacing YAML tokens with a typed **`tokens.ts`** module that RN consumes natively, and formalizing **Platform Fidelity as a blocking audit gate**. A live connection to the Mobbin MCP gave the skill empirical grounding in real-world mobile patterns.
 
