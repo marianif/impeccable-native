@@ -15,7 +15,7 @@
       "author": {
         "name": "Federica Mariani"
       },
-      "source": "./.claude-plugin",
+      "source": "./",
       "category": "design",
       "tags": ["design", "react-native", "expo", "mobile", "ux", "skills", "commands"]
     }
