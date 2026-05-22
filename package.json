@@ -14,7 +14,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/federicamariani/impeccable-native.git"
+    "url": "git+https://github.com/marianif/impeccable-native.git"
   },
   "engines": {
     "node": ">=18"
