@@ -3,7 +3,7 @@ name: impeccable-native
 description: Use when the user wants to design, build, critique, audit, polish, clarify, harden, optimize, adapt, animate, colorize, or otherwise improve a React Native or Expo mobile interface. Covers app screens, navigation flows, component design, onboarding, empty states, settings, dashboards, and mobile design systems. Handles visual hierarchy, touch targets, safe areas, platform parity (iOS/Android), accessibility (VoiceOver/TalkBack), performance (re-renders, FlatList), theming (light/dark), typography (Dynamic Type, font scaling), motion (Reanimated 3, Moti), layout (Yoga flexbox), and token-based design systems. Also use for bland mobile UIs that need more personality, overdesigned UIs that should be quieter, or ambitious effects with Skia and Reanimated. Not for web, backend, or non-UI tasks.
 version: 0.1.0
 user-invocable: true
-argument-hint: "[craft|teach|document|extract|adapt|animate|audit|bolder|clarify|colorize|critique|delight|distill|harden|onboard|layout|optimize|overdrive|polish|quieter|shape|typeset] [target]"
+argument-hint: "[craft|teach|document|extract|adapt|animate|audit|bolder|clarify|colorize|critique|delight|distill|harden|onboard|layout|optimize|overdrive|polish|quieter|rethink|shape|typeset] [target]"
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
 allowed-tools:
   - Bash(node {{scripts_path}}/detect-rn-flavor.mjs)
@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(node {{scripts_path}}/extract-tokens.mjs *)
   - Bash(node {{scripts_path}}/platform-parity.mjs *)
   - Bash(node {{scripts_path}}/a11y-audit.mjs *)
+  - Bash(node {{scripts_path}}/rethink-scan.mjs *)
   - Bash(node {{scripts_path}}/screenshot.mjs *)
   - Bash(node {{scripts_path}}/pin.mjs *)
 ---
@@ -167,6 +168,7 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `quieter [target]` | Refine | Tone down aggressive or overstimulating designs | [reference/quieter.md](reference/quieter.md) |
 | `distill [target]` | Refine | Strip to essence, remove visual complexity | [reference/distill.md](reference/distill.md) |
 | `harden [target]` | Refine | Production-ready: error states, edge cases, i18n, font scaling | [reference/harden.md](reference/harden.md) |
+| `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
 | `onboard [target]` | Refine | Design first-run flows, empty states, activation screens | [reference/onboard.md](reference/onboard.md) |
 | `animate [target]` | Enhance | Add purposeful Reanimated 3 animations and motion | [reference/animate.md](reference/animate.md) |
 | `colorize [target]` | Enhance | Add strategic color to monochromatic UIs | [reference/colorize.md](reference/colorize.md) |

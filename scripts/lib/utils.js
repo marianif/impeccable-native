@@ -351,7 +351,7 @@ const IMPECCABLE_SUB_COMMANDS = [
   'adapt', 'animate', 'audit', 'bolder', 'clarify', 'colorize',
   'craft', 'critique', 'delight', 'distill', 'document', 'extract',
   'harden', 'layout', 'onboard', 'optimize', 'overdrive', 'polish',
-  'quieter', 'shape', 'teach', 'typeset',
+  'quieter', 'rethink', 'shape', 'teach', 'typeset',
 ];
 
 export function replacePlaceholders(content, provider, commandNames = [], allSkillNames = []) {

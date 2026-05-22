@@ -29,7 +29,7 @@ const HARNESS_DIRS = [
 const VALID_COMMANDS = [
   'craft', 'teach', 'extract', 'document', 'shape',
   'critique', 'audit',
-  'polish', 'bolder', 'quieter', 'distill', 'harden', 'onboard',
+  'polish', 'bolder', 'quieter', 'distill', 'harden', 'onboard', 'rethink',
   'animate', 'colorize', 'typeset', 'layout', 'delight', 'overdrive',
   'clarify', 'adapt', 'optimize',
 ];

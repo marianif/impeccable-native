@@ -168,7 +168,7 @@ For each issue, document:
 - **Impact**: how it affects users (which user, which moment, which platform)
 - **WCAG / Standard**: which standard it violates (if applicable)
 - **Recommendation**: how to fix it (specific RN primitive, token, or pattern)
-- **Suggested command**: which impeccable-native command to use (prefer: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable harden, /impeccable layout, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable shape, /impeccable teach, /impeccable typeset)
+- **Suggested command**: which impeccable-native command to use (prefer: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable harden, /impeccable layout, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable rethink, /impeccable shape, /impeccable teach, /impeccable typeset)
 
 ### Patterns & Systemic Issues
 
@@ -190,7 +190,7 @@ List recommended commands in priority order (P0 first, then P1, then P2):
 1. **[P?] `/impeccable-native <command>`**: brief description (specific context from audit findings).
 2. **[P?] `/impeccable-native <command>`**: brief description (specific context).
 
-**Rules**: only recommend commands from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable harden, /impeccable layout, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable shape, /impeccable teach, /impeccable typeset. Map findings to the most appropriate command. End with `/impeccable-native polish` as the final step if any fixes were recommended.
+**Rules**: only recommend commands from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable harden, /impeccable layout, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable rethink, /impeccable shape, /impeccable teach, /impeccable typeset. Map findings to the most appropriate command. End with `/impeccable-native polish` as the final step if any fixes were recommended.
 
 After presenting the summary, tell the user:
 

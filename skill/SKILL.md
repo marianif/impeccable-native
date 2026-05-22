@@ -9,6 +9,7 @@ allowed-tools:
   - Bash(node {{scripts_path}}/extract-tokens.mjs *)
   - Bash(node {{scripts_path}}/platform-parity.mjs *)
   - Bash(node {{scripts_path}}/a11y-audit.mjs *)
+  - Bash(node {{scripts_path}}/rethink-scan.mjs *)
   - Bash(node {{scripts_path}}/screenshot.mjs *)
   - Bash(node {{scripts_path}}/pin.mjs *)
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
@@ -166,6 +167,7 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `quieter [target]` | Refine | Tone down aggressive or overstimulating designs | [reference/quieter.md](reference/quieter.md) |
 | `distill [target]` | Refine | Strip to essence, remove visual complexity | [reference/distill.md](reference/distill.md) |
 | `harden [target]` | Refine | Production-ready: error states, edge cases, i18n, font scaling | [reference/harden.md](reference/harden.md) |
+| `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
 | `onboard [target]` | Refine | Design first-run flows, empty states, activation screens | [reference/onboard.md](reference/onboard.md) |
 | `animate [target]` | Enhance | Add purposeful Reanimated 3 animations and motion | [reference/animate.md](reference/animate.md) |
 | `colorize [target]` | Enhance | Add strategic color to monochromatic UIs | [reference/colorize.md](reference/colorize.md) |
