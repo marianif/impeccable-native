@@ -83,6 +83,10 @@
     "description": "Reimagine a screen or component's UI and UX from scratch, including radical changes to color, style, and overall vibe, then reconcile that vision with the existing design system. Scans token definitions, theming approach, and blast radius, then proposes each token as update, keep, or new for the developer to decide. Use when a component's design is uninspired, derivative, or wrong at the concept level, not when it just needs tuning.",
     "argumentHint": "[target]"
   },
+  "flow": {
+    "description": "Map the app's navigation surface so both agents and developers can see the architecture at a glance. Detects the router (expo-router or react-navigation), then emits a Mermaid flowchart of screens and transitions, a screen inventory table, and a deep-link index. Information surface only — no scoring, no recommendations. Use when onboarding a new contributor, orienting an agent before a multi-screen change, or generating navigation docs.",
+    "argumentHint": ""
+  },
   "shape": {
     "description": "Plan UX and UI before code. Runs a required multi-round discovery interview, uses visual probes when available, and produces a user-confirmed design brief for implementation.",
     "argumentHint": "[feature to shape]"

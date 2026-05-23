@@ -350,7 +350,7 @@ const EXCLUDED_FROM_SUGGESTIONS = new Set([
 const IMPECCABLE_SUB_COMMANDS = [
   'adapt', 'animate', 'audit', 'bolder', 'clarify', 'colorize',
   'craft', 'critique', 'delight', 'distill', 'document', 'extract',
-  'harden', 'layout', 'onboard', 'optimize', 'overdrive', 'polish',
+  'flow', 'harden', 'layout', 'onboard', 'optimize', 'overdrive', 'polish',
   'quieter', 'rethink', 'shape', 'teach', 'typeset',
 ];
 
