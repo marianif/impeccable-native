@@ -28,7 +28,7 @@ const HARNESS_DIRS = [
 // Valid sub-command names
 const VALID_COMMANDS = [
   'craft', 'teach', 'extract', 'document', 'shape',
-  'critique', 'audit', 'flow',
+  'critique', 'audit', 'flow', 'migration',
   'polish', 'bolder', 'quieter', 'distill', 'harden', 'onboard', 'rethink',
   'animate', 'colorize', 'typeset', 'layout', 'delight', 'overdrive',
   'clarify', 'adapt', 'optimize',

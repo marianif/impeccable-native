@@ -189,18 +189,22 @@ export function readSourceFiles(rootDir) {
   const scripts = [];
   const scriptsDir = path.join(skillDir, 'scripts');
   if (fs.existsSync(scriptsDir)) {
-    const scriptFiles = fs.readdirSync(scriptsDir).filter(f => {
-      if (PER_PROJECT_SCRIPT_ARTIFACTS.has(f)) return false;
-      return fs.statSync(path.join(scriptsDir, f)).isFile();
-    });
-    for (const scriptFile of scriptFiles) {
-      const scriptPath = path.join(scriptsDir, scriptFile);
-      scripts.push({
-        name: scriptFile,
-        content: fs.readFileSync(scriptPath, 'utf-8'),
-        filePath: scriptPath
-      });
-    }
+    const collectScripts = (dir, prefix = '') => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const relName = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+          collectScripts(path.join(dir, entry.name), relName);
+        } else {
+          if (!prefix && PER_PROJECT_SCRIPT_ARTIFACTS.has(entry.name)) continue;
+          scripts.push({
+            name: relName,
+            content: fs.readFileSync(path.join(dir, entry.name), 'utf-8'),
+            filePath: path.join(dir, entry.name),
+          });
+        }
+      }
+    };
+    collectScripts(scriptsDir);
   }
   const agents = [];
   const agentsDir = path.join(skillDir, 'agents');
@@ -350,7 +354,7 @@ const EXCLUDED_FROM_SUGGESTIONS = new Set([
 const IMPECCABLE_SUB_COMMANDS = [
   'adapt', 'animate', 'audit', 'bolder', 'clarify', 'colorize',
   'craft', 'critique', 'delight', 'distill', 'document', 'extract',
-  'flow', 'harden', 'layout', 'onboard', 'optimize', 'overdrive', 'polish',
+  'flow', 'harden', 'layout', 'migration', 'onboard', 'optimize', 'overdrive', 'polish',
   'quieter', 'rethink', 'shape', 'teach', 'typeset',
 ];
 

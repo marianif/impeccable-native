@@ -158,6 +158,7 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `distill [target]` | Refine | Strip to essence, remove visual complexity | [reference/distill.md](reference/distill.md) |
 | `harden [target]` | Refine | Production-ready: error states, edge cases, i18n, font scaling | [reference/harden.md](reference/harden.md) |
 | `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
+| `migration --scope=<scope>` | Evaluate | Replace the entire design system across a flow or app with a phased, script-driven plan | [reference/migration.md](reference/migration.md) |
 | `flow` | Evaluate | Map the app's navigation surface as a Mermaid graph + screen inventory | [reference/flow.md](reference/flow.md) |
 | `onboard [target]` | Refine | Design first-run flows, empty states, activation screens | [reference/onboard.md](reference/onboard.md) |
 | `animate [target]` | Enhance | Add purposeful Reanimated 3 animations and motion | [reference/animate.md](reference/animate.md) |

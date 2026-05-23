@@ -11,6 +11,11 @@ allowed-tools:
   - Bash(node {{scripts_path}}/a11y-audit.mjs *)
   - Bash(node {{scripts_path}}/rethink-scan.mjs *)
   - Bash(node {{scripts_path}}/flow-scan.mjs *)
+  - Bash(node {{scripts_path}}/migration/migration-scan.mjs *)
+  - Bash(node {{scripts_path}}/migration/migration-scope.mjs *)
+  - Bash(node {{scripts_path}}/migration/token-graph.mjs *)
+  - Bash(node {{scripts_path}}/migration/dependency-order.mjs *)
+  - Bash(node {{scripts_path}}/migration/hardcoded-violations.mjs *)
   - Bash(node {{scripts_path}}/screenshot.mjs *)
   - Bash(node {{scripts_path}}/pin.mjs *)
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
@@ -169,6 +174,7 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `distill [target]` | Refine | Strip to essence, remove visual complexity | [reference/distill.md](reference/distill.md) |
 | `harden [target]` | Refine | Production-ready: error states, edge cases, i18n, font scaling | [reference/harden.md](reference/harden.md) |
 | `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
+| `migration --scope=<scope>` | Evaluate | Replace the entire design system across a flow or app with a phased, script-driven plan | [reference/migration.md](reference/migration.md) |
 | `flow` | Evaluate | Map the app's navigation surface as a Mermaid graph + screen inventory | [reference/flow.md](reference/flow.md) |
 | `onboard [target]` | Refine | Design first-run flows, empty states, activation screens | [reference/onboard.md](reference/onboard.md) |
 | `animate [target]` | Enhance | Add purposeful Reanimated 3 animations and motion | [reference/animate.md](reference/animate.md) |

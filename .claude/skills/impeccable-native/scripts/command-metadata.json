@@ -87,6 +87,10 @@
     "description": "Map the app's navigation surface so both agents and developers can see the architecture at a glance. Detects the router (expo-router or react-navigation), then emits a Mermaid flowchart of screens and transitions, a screen inventory table, and a deep-link index. Information surface only — no scoring, no recommendations. Use when onboarding a new contributor, orienting an agent before a multi-screen change, or generating navigation docs.",
     "argumentHint": ""
   },
+  "migration": {
+    "description": "Replace an app's entire design system across a flow or the whole app. Runs four reconnaissance scripts (scope resolution, token co-occurrence graph with Jaccard clustering, Tarjan SCC dependency ordering, hardcoded violation scan) to produce a phased migration brief before any file is touched. Use when the design system is wrong at the concept level, a rebrand requires replacing all tokens, or the team is adopting a new theming approach.",
+    "argumentHint": "--scope=<app|flow:name|routes:glob>"
+  },
   "shape": {
     "description": "Plan UX and UI before code. Runs a required multi-round discovery interview, uses visual probes when available, and produces a user-confirmed design brief for implementation.",
     "argumentHint": "[feature to shape]"
