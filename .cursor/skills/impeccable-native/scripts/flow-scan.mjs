@@ -170,17 +170,50 @@ function scanExpoRouter() {
         if (m) params.push({ name: m[2], catchAll: !!m[1] });
       }
 
+      // Screen name: for `index.tsx`, derive from the last *non-group* segment
+      // (parens denote invisible route groups, not real screen names). Root
+      // index becomes "home". For non-index files, the basename is the name.
+      let screenName;
+      if (base === 'index') {
+        const visibleSegments = segments.filter(s => !/^\(.+\)$/.test(s));
+        screenName = visibleSegments.length === 0
+          ? 'home'
+          : visibleSegments[visibleSegments.length - 1];
+      } else {
+        screenName = base;
+      }
+
       screens.push({
-        name: base === 'index' ? (segments[segments.length - 1] || 'index') : base,
+        name: screenName,
         file: rel,
         route: route || '/',
         params,
-        kind: detectScreenKind(base, segments),
+        kind: detectScreenKind(base, segments, rel),
       });
     }
   }
 
   walk(appDir);
+
+  // Cross-reference: any <Stack.Screen name="X" options={{ presentation: "modal" }} />
+  // declarations in _layout files mark the matching screen as a modal, even if
+  // its filename doesn't hint at it.
+  const modalNames = new Set();
+  const layoutScreenRe =
+    /<Stack\.Screen\s+([^>]*?)\/?>/g;
+  for (const nav of navigators) {
+    const src = safeRead(path.join(rootDir, nav.file));
+    if (!src) continue;
+    for (const m of src.matchAll(layoutScreenRe)) {
+      const attrs = m[1];
+      if (!/presentation\s*:\s*['"`]modal['"`]/.test(attrs)) continue;
+      const nameMatch = attrs.match(/name\s*=\s*['"`]([^'"`]+)['"`]/);
+      if (nameMatch) modalNames.add(nameMatch[1]);
+    }
+  }
+  for (const screen of screens) {
+    if (modalNames.has(screen.name)) screen.kind = 'modal';
+  }
 
   // Entry points: root _layout and root index.
   for (const nav of navigators) {
@@ -212,9 +245,19 @@ function detectLayoutType(source) {
   return 'unknown';
 }
 
-function detectScreenKind(base, segments) {
+function detectScreenKind(base, segments, relPath) {
   if (base.startsWith('+')) return 'special';
-  if (segments.some(s => s === 'modal' || s === '(modal)') || base === 'modal') return 'modal';
+  // Filename hints
+  if (segments.some(s => s === 'modal' || s === '(modal)') || base === 'modal' || /modal/i.test(base)) {
+    return 'modal';
+  }
+  // Source-level hint: a screen registered with `presentation: 'modal'` in
+  // a parent _layout's <Stack.Screen> options. Cheap heuristic — read the
+  // file itself for an `options={{ presentation: 'modal' }}` block.
+  if (relPath) {
+    const src = safeRead(path.join(rootDir, relPath));
+    if (src && /presentation\s*:\s*['"`]modal['"`]/.test(src)) return 'modal';
+  }
   return 'screen';
 }
 
