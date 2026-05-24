@@ -1,7 +1,7 @@
 ---
 name: impeccable-native
 description: Use when the user wants to design, build, critique, audit, polish, clarify, harden, optimize, adapt, animate, colorize, or otherwise improve a React Native or Expo mobile interface. Covers app screens, navigation flows, component design, onboarding, empty states, settings, dashboards, and mobile design systems. Handles visual hierarchy, touch targets, safe areas, platform parity (iOS/Android), accessibility (VoiceOver/TalkBack), performance (re-renders, FlatList), theming (light/dark), typography (Dynamic Type, font scaling), motion (Reanimated 3, Moti), layout (Yoga flexbox), and token-based design systems. Also use for bland mobile UIs that need more personality, overdesigned UIs that should be quieter, or ambitious effects with Skia and Reanimated. Not for web, backend, or non-UI tasks.
-version: 0.5.0
+version: 0.6.0
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
 ---
 
@@ -159,6 +159,7 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `harden [target]` | Refine | Production-ready: error states, edge cases, i18n, font scaling | [reference/harden.md](reference/harden.md) |
 | `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
 | `migration --scope=<scope>` | Evaluate | Replace the entire design system across a flow or app with a phased, script-driven plan | [reference/migration.md](reference/migration.md) |
+| `rebrand [scan \| direction \| resume]` | Build | Author a new brand and design system from scratch — forensics on the current mess, then 3 divergent directions, then a brief that `migration` consumes | [reference/rebrand.md](reference/rebrand.md) |
 | `flow create \| rethink [name]` | Build | Design a user journey from scratch, or reshape an existing one — per-screen intent, emotional beat, decision, friction, plus a route/component scaffold | [reference/flow.md](reference/flow.md) |
 | `onboard [target]` | Refine | Design first-run flows, empty states, activation screens | [reference/onboard.md](reference/onboard.md) |
 | `animate [target]` | Enhance | Add purposeful Reanimated 3 animations and motion | [reference/animate.md](reference/animate.md) |

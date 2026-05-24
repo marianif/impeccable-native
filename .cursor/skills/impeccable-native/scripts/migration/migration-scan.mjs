@@ -49,7 +49,8 @@ if (!scopeRaw) {
   process.exit(1);
 }
 
-const scriptsDir = path.dirname(new URL(import.meta.url).pathname);
+const ownDir = path.dirname(new URL(import.meta.url).pathname);
+const scriptsDir = path.resolve(ownDir, '..');
 const impeccableDir = path.join(rootDir, '.impeccable');
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -230,7 +231,7 @@ async function run() {
   write('migration-scope.json', scopeData);
 
   process.stderr.write('migration-scan: building token graph...\n');
-  const tokenGraph = runScript('migration/token-graph.mjs', [`--tau=${tau}`]);
+  const tokenGraph = runScript('shared/token-graph.mjs', [`--tau=${tau}`]);
   write('migration-token-graph.json', tokenGraph);
 
   process.stderr.write('migration-scan: computing dependency order...\n');
@@ -238,7 +239,7 @@ async function run() {
   write('migration-dependency-order.json', dependencyOrder);
 
   process.stderr.write('migration-scan: scanning for hardcoded violations...\n');
-  const violations = runScript('migration/hardcoded-violations.mjs');
+  const violations = runScript('shared/hardcoded-violations.mjs');
   write('migration-violations.json', violations);
 
   // Annotate phases with token cluster assignments

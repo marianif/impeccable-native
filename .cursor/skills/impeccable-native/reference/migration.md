@@ -27,18 +27,18 @@ Confirm the scope with the developer before running the scan. Scope changes afte
 ## Step 1: Run the Migration Scan
 
 ```bash
-node .cursor/skills/impeccable-native/scripts/migration/migration-scan.mjs --scope=<scope> --dir=.
+node .cursor/skills/impeccable-native/scripts/migration/migration-scan.mjs --scope=<scope> [--brand-brief=.impeccable/brand-brief.json] --dir=.
 ```
 
 This orchestrates four scripts in sequence:
 
 1. **`migration-scope.mjs`** — Resolves the scope argument into a concrete flat list of screen and component files. For `flow:` scopes, reuses `/flow`'s navigation graph. For `routes:` scopes, applies the glob. For `app`, heuristic screen detection across the whole project. Produces the parts list the migration was built against.
 
-2. **`token-graph.mjs`** — Builds a token × file co-occurrence matrix, then clusters tokens that must migrate together using Jaccard similarity + connected-components. The key insight: `colors.primary` and `colors.onPrimary` that always appear together must migrate as a unit or the UI looks broken mid-flight. Clusters are the atomic migration unit for tokens.
+2. **`shared/token-graph.mjs`** — Builds a token × file co-occurrence matrix, then clusters tokens that must migrate together using Jaccard similarity + connected-components. The key insight: `colors.primary` and `colors.onPrimary` that always appear together must migrate as a unit or the UI looks broken mid-flight. Clusters are the atomic migration unit for tokens. (Shared with `rebrand`.)
 
 3. **`dependency-order.mjs`** — Builds an import DAG over the scope, detects cycles using Tarjan's SCC algorithm, classifies each cycle (shared-type | barrel | genuine), and emits a topologically-sorted phase plan. Leaves first, hot-path screens last. Genuine cycles that block ordering are surfaced as blockers — they must be resolved before the migration plan is valid.
 
-4. **`hardcoded-violations.mjs`** — Finds every place the codebase bypasses the token system: inline hex colors, rgb/hsl literals, magic spacing numbers, raw fontSizes, magic borderRadius values. These files won't respond to token changes. A severe verdict is a blocker: fix violations first, then re-run.
+4. **`shared/hardcoded-violations.mjs`** — Finds every place the codebase bypasses the token system: inline hex colors, rgb/hsl literals, magic spacing numbers, raw fontSizes, magic borderRadius values. These files won't respond to token changes. A severe verdict is a blocker: fix violations first, then re-run. (Shared with `rebrand`.)
 
 Output: `.impeccable/migration-brief.json` — the snapshot the migration plan is built against. Do not re-scan between phases; the brief is the single source of truth for the entire migration.
 
@@ -56,6 +56,8 @@ The brief's `summary.readinessVerdict` determines what happens next:
 Never skip blockers. Present them with specific file:line references so the developer can act. Only proceed to Step 3 after the developer confirms or after a clean re-scan.
 
 ## Step 3: Design the New System
+
+> **Skip this step if `--brand-brief=<path>` was passed.** A brand brief produced by `/impeccable-native rebrand direction` already contains the position, the new token system with rationale per token, and the dispositions. Read it, present a one-screen summary to the developer for confirmation, then jump to Step 4. If no brief was supplied, derive the new system inline as described below.
 
 With the brief in hand, design the new token system — this is `rethink`'s Step 1 at system scale.
 

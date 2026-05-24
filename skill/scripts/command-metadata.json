@@ -91,6 +91,10 @@
     "description": "Replace an app's entire design system across a flow or the whole app. Runs four reconnaissance scripts (scope resolution, token co-occurrence graph with Jaccard clustering, Tarjan SCC dependency ordering, hardcoded violation scan) to produce a phased migration brief before any file is touched. Use when the design system is wrong at the concept level, a rebrand requires replacing all tokens, or the team is adopting a new theming approach.",
     "argumentHint": "--scope=<app|flow:name|routes:glob>"
   },
+  "rebrand": {
+    "description": "Author a brand-new design system from scratch for an existing app. Two-act skill: Act 1 (scan) runs forensics on the current visual surface — perceptual color clustering (CIEDE2000), incoherence hunting, vibe fingerprinting; Act 2 (direction) interrogates position with 5-7 questions then generates three genuinely divergent brand directions across six axes (temperature, density, voice, posture, era, convention), each a complete brand with token system and ASCII mockup. User picks or remixes; skill writes brand-brief.json that /migration consumes directly. Use when the foundation is strong but the brand is wrong, or when a vibecoded app has drifted into a mashup of styles.",
+    "argumentHint": "scan | direction | resume"
+  },
   "shape": {
     "description": "Plan UX and UI before code. Runs a required multi-round discovery interview, uses visual probes when available, and produces a user-confirmed design brief for implementation.",
     "argumentHint": "[feature to shape]"
