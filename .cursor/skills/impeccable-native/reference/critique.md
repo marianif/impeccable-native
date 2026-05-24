@@ -174,7 +174,7 @@ For each issue, tag with **P0–P3 severity** (consult [heuristics-scoring](heur
 - **Where**: component / file:line, and platform (iOS / Android / both)
 - **Why it matters**: how this hurts users or undermines goals (which persona, which moment, which platform)
 - **Fix**: what to do about it — name the specific RN primitive, hook, or token
-- **Suggested command**: which impeccable-native command could address this (from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable flow, /impeccable harden, /impeccable layout, /impeccable migration, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable rebrand, /impeccable rethink, /impeccable shape, /impeccable teach, /impeccable typeset)
+- **Suggested command**: which impeccable-native command could address this (from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable design-system, /impeccable distill, /impeccable document, /impeccable extract, /impeccable flow, /impeccable harden, /impeccable layout, /impeccable migration, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable rebrand, /impeccable rethink, /impeccable shape, /impeccable teach, /impeccable typeset)
 
 #### Persona Red Flags
 > *Consult [personas](personas.md)*
@@ -289,7 +289,7 @@ List recommended commands in priority order, based on the user's answers:
 ...
 
 **Rules for recommendations**:
-- Only recommend commands from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable distill, /impeccable document, /impeccable extract, /impeccable flow, /impeccable harden, /impeccable layout, /impeccable migration, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable rebrand, /impeccable rethink, /impeccable shape, /impeccable teach, /impeccable typeset
+- Only recommend commands from: /impeccable adapt, /impeccable animate, /impeccable audit, /impeccable bolder, /impeccable clarify, /impeccable colorize, /impeccable craft, /impeccable critique, /impeccable delight, /impeccable design-system, /impeccable distill, /impeccable document, /impeccable extract, /impeccable flow, /impeccable harden, /impeccable layout, /impeccable migration, /impeccable onboard, /impeccable optimize, /impeccable overdrive, /impeccable polish, /impeccable quieter, /impeccable rebrand, /impeccable rethink, /impeccable shape, /impeccable teach, /impeccable typeset
 - Order by the user's stated priorities first, then by impact
 - Each item's description should carry enough context that the command knows what to focus on
 - Map each Priority Issue to the appropriate command (e.g. platform-parity issues → `harden` or `adapt`; AI-slop → `quieter` or `bolder`; Dynamic Type clipping → `adapt`; token leakage → `extract`)

@@ -21,6 +21,13 @@ allowed-tools:
   - Bash(node {{scripts_path}}/rebrand/style-inventory.mjs *)
   - Bash(node {{scripts_path}}/rebrand/vibe-fingerprint.mjs *)
   - Bash(node {{scripts_path}}/rebrand/incoherence-report.mjs *)
+  - Bash(node {{scripts_path}}/design-system/design-system-scan.mjs *)
+  - Bash(node {{scripts_path}}/design-system/component-inventory.mjs *)
+  - Bash(node {{scripts_path}}/design-system/duplication-report.mjs *)
+  - Bash(node {{scripts_path}}/design-system/dead-code-report.mjs *)
+  - Bash(node {{scripts_path}}/design-system/composition-patterns.mjs *)
+  - Bash(node {{scripts_path}}/design-system/app-anatomy.mjs *)
+  - Bash(node {{scripts_path}}/design-system/screen-choreography.mjs *)
   - Bash(node {{scripts_path}}/screenshot.mjs *)
   - Bash(node {{scripts_path}}/pin.mjs *)
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
@@ -181,6 +188,7 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
 | `migration --scope=<scope>` | Evaluate | Replace the entire design system across a flow or app with a phased, script-driven plan | [reference/migration.md](reference/migration.md) |
 | `rebrand [scan \| direction \| resume]` | Build | Author a new brand and design system from scratch — forensics on the current mess, then 3 divergent directions, then a brief that `migration` consumes | [reference/rebrand.md](reference/rebrand.md) |
+| `design-system [scan \| plan \| execute \| resume]` | Build | Design the component layer as living things on screens — atoms, molecules, organisms tied to vibe, journey, and evidence. Brownfield: catalogues components, clusters duplicates, harvests implicit organisms, maps screen choreography. Greenfield: projects from brand brief + PRODUCT.md. Per-cluster cleanup approvals; organisms require the five-question gate (job / lives in / states / reacts to / neighbors) | [reference/design-system.md](reference/design-system.md) |
 | `flow create \| rethink [name]` | Build | Design a user journey from scratch, or reshape an existing one — per-screen intent, emotional beat, decision, friction, plus a route/component scaffold | [reference/flow.md](reference/flow.md) |
 | `onboard [target]` | Refine | Design first-run flows, empty states, activation screens | [reference/onboard.md](reference/onboard.md) |
 | `animate [target]` | Enhance | Add purposeful Reanimated 3 animations and motion | [reference/animate.md](reference/animate.md) |
