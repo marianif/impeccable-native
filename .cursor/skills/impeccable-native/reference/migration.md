@@ -71,19 +71,233 @@ With the brief in hand, design the new token system — this is `rethink`'s Step
 
 Present the new token set to the developer for approval before any file is edited.
 
+## Step 3.5: Author the Substitution Table
+
+Before any file changes, derive the exact rewrite plan. The agent does this — not by holding the codebase in context, but by reading the scan data and the brief and computing the mapping deterministically.
+
+### Inputs the agent already has
+
+- `migration-token-graph.json` — every token in use, every file referencing it, every cluster.
+- `migration-violations.json` — every hardcoded value with a `nearestToken` suggestion.
+- `migration-scope.json` — the file list per phase.
+- `brand-brief.json` — new token system with disposition per token (UPDATE / NEW / RETIRE).
+- The project's styling approach (from `detect-rn-flavor.mjs` — `stylesheet | nativewind | restyle`).
+
+### What to author
+
+Write two files to `.impeccable/`:
+
+**`substitution-table.json`** — the machine-readable plan. Shape:
+
+```jsonc
+{
+  "version": "1.0",
+  "generatedAt": "<ISO>",
+  "sourceMigrationBrief": ".impeccable/migration-brief.json",
+  "sourceBrandBrief": ".impeccable/brand-brief.json",
+  "stylingApproach": "stylesheet" | "nativewind" | "restyle",
+
+  "tokenFileChanges": [
+    // Edits to the source-of-truth tokens file. Disposition: UPDATE.
+    // One edit per token. Triggers no call-site rewrite — the name is unchanged.
+    { "file": "src/theme/tokens.ts",
+      "edits": [
+        { "path": "colors.primary", "oldValue": "#3B82F6", "newValue": "#5B3FFF",
+          "rationale": "shift from corporate blue to brand violet per direction 'Quiet Instrument'" }
+      ] }
+  ],
+
+  "renameRules": [
+    // Dotted-access rename. Disposition: NEW (with old retired in cleanup).
+    { "id": "rename-1", "old": "colors.primary", "new": "colors.brand.primary",
+      "fromCluster": "cluster-brand", "affectedFiles": ["app/a.tsx", "..."],
+      "rationale": "..." }
+  ],
+
+  "classRules": [
+    // NativeWind / className substitutions. Only present when stylingApproach=nativewind.
+    { "id": "class-1", "old": "bg-blue-600", "new": "bg-brand-primary",
+      "affectedFiles": ["..."] }
+  ],
+
+  "literalPromotions": [
+    // Hardcoded violations whose value matches a new token exactly.
+    { "id": "lit-1", "literal": "#3B82F6", "newTokenExpression": "tokens.colors.brand.primary",
+      "confidence": "high", "affectedFiles": ["..."] }
+  ],
+
+  "ambiguous": [
+    // Things the agent refused to auto-resolve. Developer decides before phase 1 runs.
+    { "id": "amb-1", "issue": "colors.accent could map to brand.secondary OR feedback.highlight",
+      "candidates": ["colors.brand.secondary", "colors.feedback.highlight"],
+      "affectedFiles": ["..."] }
+  ],
+
+  "retirements": [
+    // Tokens kept alive during phases, deleted in cleanup.
+    { "old": "colors.primary", "deleteAfter": "cleanup-commit" }
+  ],
+
+  "destructuredUsage": [
+    // Files that destructure tokens via `const { primary } = theme.colors;`.
+    // The script defers these to the agent; alias tracking across functions
+    // is the kind of thing that bites silently.
+    { "file": "src/hooks/useTheme.ts", "reason": "destructured at line 14; needs manual review" }
+  ]
+}
+```
+
+**`substitution-plan.md`** — the human-readable review surface. Group by **what will visibly change**: rename rules first (largest footprint), then value updates, then literal promotions, then the ambiguous list the developer must resolve. Include the rationale inline. The developer reads the Markdown, edits the JSON if needed.
+
+### Rules for authoring
+
+- **Per-token rules, not per-site.** `{ old: "colors.primary", new: "colors.brand.primary", affectedFiles: [...] }` not one entry per line. The script expands at execution time. Compact and survives small codebase changes between table generation and execution.
+- **Three rule kinds, separate arrays.** Dotted-access rename, classname swap, literal promotion. Don't unify — each script section handles one kind cleanly.
+- **Destructured tokens go to the agent.** If the token graph shows a token referenced via `const { primary } = theme.colors`, add the file to `destructuredUsage` instead of `renameRules`. Alias tracking across modules is silent-bug territory.
+- **Literal promotion only when confidence is high.** Auto-promote if the literal value matches a new token's value exactly. Anything else — close-but-not-equal hex, "this looks like spacing.lg" — goes to the ambiguous list.
+
+### Approval gate
+
+Present the plan to the developer:
+
+> Substitution plan ready: N rename rules covering F files, V value updates, L literal promotions, A ambiguous cases. Read `.impeccable/substitution-plan.md` and confirm or edit `.impeccable/substitution-table.json` before phase 1 runs.
+
+Do not proceed to Step 4 until the developer confirms.
+
+---
+
 ## Step 4: Execute Phase by Phase
 
-The `dependencyOrder.phases` in the brief is the execution plan. Follow it strictly — it was computed to minimize mid-migration breakage.
+The `dependencyOrder.phases` in the brief is the execution plan. Each phase is one commit. **The agent does not rewrite files directly.** Instead, the agent authors a small per-phase script that imports from `migration/rewrite-helpers.mjs` and applies the substitution table to the phase's files.
 
-For each phase:
-1. Migrate the files in the phase (apply the new tokens, update imports, swap className/style references to the new system).
-2. Gate on `/impeccable-native audit <file>` for each migrated file — the migration is not allowed to regress touch targets, contrast, or platform parity even if the new design was approved.
-3. Confirm with the developer before advancing to the next phase. Each phase is its own commit.
+This shape — agent-authored, project-specific script — exists for one reason: a universal `migrate-phase.mjs` would have to handle every styling library, every destructuring pattern, every edge case in every codebase. A per-project script only handles what *this* project actually does. The agent already knows the patterns from the scan data; forcing that knowledge through a generic engine throws it away.
 
-Rules during execution:
-- **Never migrate a cluster partially.** If `cluster-brand` spans a file in phase 1 and a file in phase 2, the token value change happens in phase 1 (earliest consumer) — phase 2's file picks up the new value automatically.
+### For each phase
+
+**Step 4a: Author the per-phase script.**
+
+Write `.impeccable/generated/migrate-phase-<N>.mjs`. It imports the helpers and wires together the substitution table's rules for this phase's files:
+
+```js
+// .impeccable/generated/migrate-phase-1.mjs — example
+import fs from 'fs';
+import path from 'path';
+import {
+  renameDottedAccess,
+  replaceValueInTokensFile,
+  replaceClassname,
+  promoteLiteral,
+  planChanges,
+  applyChanges,
+  emitReport,
+  checkGitClean,
+} from '<scripts_path>/migration/rewrite-helpers.mjs';
+
+const rootDir = process.cwd();
+const dryRun = !process.argv.includes('--commit');
+const phase = 1;
+
+const table = JSON.parse(fs.readFileSync('.impeccable/substitution-table.json', 'utf-8'));
+const brief = JSON.parse(fs.readFileSync('.impeccable/migration-brief.json', 'utf-8'));
+const phaseFiles = brief.dependencyOrder.phases.find(p => p.phase === phase).files;
+const requiresAgent = [];
+
+// Safety: refuse to mutate a dirty tree in commit mode.
+if (!dryRun) {
+  const git = checkGitClean(rootDir);
+  if (!git.clean) { console.error(git.reason); process.exit(1); }
+}
+
+const plan = planChanges();
+
+// 1) Apply value updates to the tokens file (phase 1 typically owns this).
+for (const change of table.tokenFileChanges) {
+  if (!phaseFiles.includes(change.file)) continue;
+  const src = fs.readFileSync(path.resolve(rootDir, change.file), 'utf-8');
+  for (const e of change.edits) {
+    plan.add(change.file, replaceValueInTokensFile(src, e.path, e.newValue));
+  }
+}
+
+// 2) Apply rename rules to every phase file that uses the old token.
+for (const file of phaseFiles) {
+  if (table.destructuredUsage.some(d => d.file === file)) {
+    requiresAgent.push({ file, reason: 'destructured token usage' });
+    continue;
+  }
+  const src = fs.readFileSync(path.resolve(rootDir, file), 'utf-8');
+  for (const rule of table.renameRules) {
+    if (!rule.affectedFiles.includes(file)) continue;
+    plan.add(file, renameDottedAccess(src, rule.old, rule.new));
+  }
+  for (const rule of table.classRules ?? []) {
+    if (!rule.affectedFiles.includes(file)) continue;
+    plan.add(file, replaceClassname(src, rule.old, rule.new));
+  }
+  for (const promo of table.literalPromotions) {
+    if (!promo.affectedFiles.includes(file)) continue;
+    if (promo.confidence !== 'high') {
+      requiresAgent.push({ file, reason: `literal ${promo.literal} needs review` });
+      continue;
+    }
+    plan.add(file, promoteLiteral(src, promo.literal, promo.newTokenExpression));
+  }
+}
+
+const results = applyChanges(plan, { rootDir, dryRun });
+const { mdPath } = emitReport({ rootDir, phase, plan, applyResults: results, requiresAgent });
+
+console.log(`Phase ${phase} ${dryRun ? 'dry-run' : 'committed'}: ${results.written.length} files, ${plan.editCount()} edits.`);
+console.log(`Report: ${mdPath}`);
+if (results.conflicts.length > 0) process.exit(2);
+```
+
+Each phase's script differs only in which files it processes and which rules apply. The agent regenerates it from the table per phase.
+
+**Step 4b: Mandatory dry-run.**
+
+Run the script in dry-run mode first (this is the default — `--commit` is required to write):
+
+```bash
+node .impeccable/generated/migrate-phase-<N>.mjs
+```
+
+Read `.impeccable/generated/phase-<N>-rewrite-report.md`. Surface to the developer:
+- File count, edit count.
+- Sample edits per kind (the report includes 5 per kind).
+- Conflicts (overlapping edits — the script refused to apply these).
+- Files in `requiresAgent` (destructured tokens, low-confidence literals).
+
+Wait for developer confirmation. If they reject, edit the substitution table and re-run dry-run.
+
+**Step 4c: Commit mode.**
+
+When the developer approves:
+
+```bash
+node .impeccable/generated/migrate-phase-<N>.mjs --commit
+```
+
+The script refuses to run if the working tree has uncommitted changes (safety rail — you must commit anything else before applying).
+
+**Step 4d: Agent handles the `requiresAgent` list.**
+
+Open only those files. The agent has full context for these (typically 5–15 per phase, not 47). Apply the substitution table's intent with judgement. Commit those changes separately or amend.
+
+**Step 4e: Verify.**
+
+Re-run `shared/hardcoded-violations.mjs` over the phase's files — expect no new violations introduced. Run `/impeccable-native audit` on the touched files for the contrast / touch-target / platform-parity gate. If either fails, fix and re-verify before advancing.
+
+**Step 4f: Annotate, commit, advance.**
+
+Add a one-line comment `// migrated to v2 tokens — phase N` at the top of each touched file (the cleanup commit will sweep these). Commit the phase with a message including the phase number and rule counts. Move to phase N+1.
+
+### Rules during execution
+
+- **Never migrate a cluster partially.** If `cluster-brand` spans a file in phase 1 and a file in phase 2, the token value change happens in phase 1 (earliest consumer) — phase 2's file picks up the new value automatically because the rename rule is the same in both.
 - **Honor the dual-resident shim.** Old token names stay valid throughout. Rollback at any phase = revert the phase's commits; no schema surgery needed.
-- **Annotate migrated files.** Add a one-line comment `// migrated to v2 tokens — phase N` so the cleanup commit knows what to sweep.
+- **Generated scripts are checked in.** `.impeccable/generated/` is part of the migration's audit trail. The developer (and a future reviewer) can read exactly what changed and replay the migration if needed.
+- **Always dry-run before commit.** The script's default is dry-run. The agent must never invoke `--commit` without first reading the dry-run report and getting developer confirmation.
 
 ## Step 5: Cleanup
 
@@ -93,8 +307,26 @@ Only after every screen in scope passes audit on both platforms:
 2. Remove the dual-resident shim / namespace.
 3. Sweep the `// migrated to v2 tokens` comments.
 4. Run `/impeccable-native audit` across the full scope one final time.
+5. **Rewrite `PRODUCT.md` and `DESIGN.md` to the new course.** This is the point at which the docs are allowed to follow the code. If a `brand-brief.json` was used, both files are rewritten from it — clean replace, no "superseded" section. Git history is the archive. After rewriting, run `/impeccable-native teach` and `/impeccable-native document` if either file becomes thin during the rewrite — they regenerate the structured fields the rest of the skill reads.
 
-The cleanup commit is the point of no return. Warn the developer explicitly: "After this commit, rollback requires reverting multiple commits and re-adding the old token file."
+The cleanup commit is the point of no return. Warn the developer explicitly: "After this commit, rollback requires reverting multiple commits, re-adding the old token file, and restoring the previous PRODUCT.md / DESIGN.md from git history."
+
+### Rewriting PRODUCT.md and DESIGN.md from a brand brief
+
+When `--brand-brief=<path>` was used and Step 5.5 is running, derive each file's contents from the brief:
+
+**PRODUCT.md** — pull from `position`:
+- `users` and `principles` reflect `position.sceneSentence` and the rephrased one-paragraph position.
+- `brand` lists `position.is` and `position.isNot` so future commands have an explicit ban list.
+- `platform-fidelity` reflects `axes.convention` (inherits-platform / mostly-platform / distinct).
+- Include the new `appType` (tool / companion / stage) so downstream commands inherit the stance.
+
+**DESIGN.md** — pull from `tokens`:
+- Color section uses the cluster names and disposition rationale. Include hex values *and* the `why` for each token so future audits can defend the choice.
+- Type, spacing, radius, motion, elevation sections each take their respective token block. Include the `why` per section, not just the values.
+- Rules section copies `rules.ruledOut` verbatim — that's the explicit anti-position.
+
+Do not include the old guidance. Do not append a "superseded" section. The brief is the new source of truth; the previous `PRODUCT.md` / `DESIGN.md` live in git history, which is sufficient.
 
 ## What `migration` Is NOT
 

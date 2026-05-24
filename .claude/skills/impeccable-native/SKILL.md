@@ -16,6 +16,7 @@ allowed-tools:
   - Bash(node {{scripts_path}}/migration/migration-scan.mjs *)
   - Bash(node {{scripts_path}}/migration/migration-scope.mjs *)
   - Bash(node {{scripts_path}}/migration/dependency-order.mjs *)
+  - Bash(node .impeccable/generated/*.mjs *)
   - Bash(node {{scripts_path}}/shared/token-graph.mjs *)
   - Bash(node {{scripts_path}}/shared/hardcoded-violations.mjs *)
   - Bash(node {{scripts_path}}/rebrand/rebrand-scan.mjs *)

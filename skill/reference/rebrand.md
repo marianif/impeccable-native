@@ -248,6 +248,10 @@ Also write `.impeccable/brand.md` as a human-readable version of the same conten
 After writing the brief, tell the user:
 
 > Brand brief written to `.impeccable/brand-brief.json`. To execute the rebrand across the app, run `{{command_prefix}}impeccable-native migration --scope=app --brand-brief=.impeccable/brand-brief.json`. `migration` will skip its design step and use this brief directly.
+>
+> **PRODUCT.md and DESIGN.md are not updated yet.** They will be rewritten as part of `migration`'s cleanup step, after the new system has landed in code and passed audit on both platforms. Until then they reflect the current (old) system — so commands like `audit`, `critique`, and `polish` still measure against what's actually there. Updating the docs now would make every other command flag the entire app as off-brand for the duration of the migration.
+
+Do not update `PRODUCT.md` or `DESIGN.md` from inside `rebrand`. The brief is the plan; the docs reflect what is.
 
 ---
 
