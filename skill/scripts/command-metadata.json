@@ -84,8 +84,8 @@
     "argumentHint": "[target]"
   },
   "flow": {
-    "description": "Map the app's navigation surface so both agents and developers can see the architecture at a glance. Detects the router (expo-router or react-navigation), then emits a Mermaid flowchart of screens and transitions, a screen inventory table, and a deep-link index. Information surface only — no scoring, no recommendations. Use when onboarding a new contributor, orienting an agent before a multi-screen change, or generating navigation docs.",
-    "argumentHint": ""
+    "description": "Design the experience of moving through the app as a user journey — not just a navigation graph. Two modes: 'create <brief>' designs a journey from scratch; 'rethink <name>' scans the current app, locates a named journey, critiques it, and reshapes it. Outputs a per-screen blueprint (intent, emotional beat, key decision, friction notes, primary action, exit) and a technical scaffold (route files or Stack.Screen entries with stubs) ready for /craft. Use when shaping or reshaping a journey — onboarding, checkout, settings discovery, first-run, recovery flows.",
+    "argumentHint": "create <brief> | rethink <name>"
   },
   "migration": {
     "description": "Replace an app's entire design system across a flow or the whole app. Runs four reconnaissance scripts (scope resolution, token co-occurrence graph with Jaccard clustering, Tarjan SCC dependency ordering, hardcoded violation scan) to produce a phased migration brief before any file is touched. Use when the design system is wrong at the concept level, a rebrand requires replacing all tokens, or the team is adopting a new theming approach.",
