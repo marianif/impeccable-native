@@ -3,35 +3,30 @@
 /**
  * rethink-scan.mjs
  *
- * Reconnaissance for `/impeccable-native rethink`. Before a radical redesign,
- * this maps the existing design-system surface so the redesign can decide,
- * per token: UPDATE it (evolve the system), KEEP it (stay retrocompatible),
- * or just gain CONTEXT (understand what a change would ripple into).
+ * Reconnaissance for `/impeccable-native rethink`. The purpose-driven sibling
+ * of `break-scan`. Where `break-scan` asks "what can I change?", this script
+ * asks "what is this component for, and what surrounds it?".
  *
- * It answers three questions:
- *   1. Where is the design system DECLARED?     (token definitions)
- *   2. HOW is theming wired?                      (theming infra)
- *   3. What is the BLAST RADIUS of a token change? (shared usage)
+ * The brand surface is read-only here — the redesign composes existing tokens
+ * differently, it never proposes value changes. So the scan output focuses on
+ * the *role* the target plays in the choreography:
+ *
+ *   1. brandSurface     — token vocabulary (read-only) + theming approach.
+ *   2. usageSites       — screens and parents that mount the target.
+ *   3. flowNeighbors    — what renders around the target on each screen.
+ *   4. siblingTreatment — other components on shared screens with same-treatment signal.
  *
  * Usage:
- *   node rethink-scan.mjs [--target=path] [--dir=path]
- *
- * Flags:
- *   --target=path   The component/screen being rethought (file or dir).
- *                   Blast radius is computed relative to the tokens IT uses.
- *   --dir=path      Project root to scan (default: cwd).
+ *   node rethink-scan.mjs --target=<path-to-component> [--dir=path]
  *
  * Output (stdout, JSON):
  *   {
- *     "tokenDefinitions": [ { file, kind, exports: [...], line } ],
- *     "themingInfra":     { approach, evidence: [ { signal, file, line } ] },
- *     "blastRadius":      { targetTokens: [...], consumers: [ { token, count, files: [...] } ] },
- *     "summary":          { totalFiles, hasTokenModule, approach, targetResolved }
+ *     "brandSurface":     { tokenDefinitions, themingInfra: { approach, evidence } },
+ *     "usageSites":       [ { file, line, importedAs } ],
+ *     "flowNeighbors":    [ { screen, before: [...], after: [...], parent } ],
+ *     "siblingTreatment": [ { screen, siblings: [ { name, sameHeight, samePadding, sameWeight } ] } ],
+ *     "summary":          { ... }
  *   }
- *
- * The script finds declarations and references, not intent. Use it as a map:
- * a token with a large blast radius is expensive to mutate (favor KEEP or add
- * a new token); a token used only by the target is cheap to redesign freely.
  */
 
 import fs from 'fs';
@@ -40,14 +35,20 @@ import path from 'path';
 // ── CLI args ───────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
-const rootDir = (() => {
-  const flag = args.find(a => a.startsWith('--dir='));
-  return flag ? path.resolve(flag.split('=')[1]) : process.cwd();
-})();
-const targetArg = (() => {
-  const flag = args.find(a => a.startsWith('--target='));
-  return flag ? flag.split('=')[1] : null;
-})();
+function flag(name) {
+  const f = args.find(a => a.startsWith(`--${name}=`));
+  return f ? f.slice(name.length + 3) : null;
+}
+const rootDir = path.resolve(flag('dir') ?? process.cwd());
+const targetArg = flag('target');
+
+if (!targetArg) {
+  process.stderr.write(
+    `rethink-scan: --target is required.\n` +
+    `  Usage: node rethink-scan.mjs --target=<path-to-component> [--dir=path]\n`
+  );
+  process.exit(1);
+}
 
 // ── file discovery ─────────────────────────────────────────────────────────
 
@@ -58,19 +59,12 @@ const IGNORE_DIRS = new Set([
 
 function collectFiles(dir, results = []) {
   let entries;
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return results;
-  }
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return results; }
   for (const entry of entries) {
     if (IGNORE_DIRS.has(entry.name)) continue;
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      collectFiles(full, results);
-    } else if (/\.(tsx?|jsx?)$/.test(entry.name)) {
-      results.push(full);
-    }
+    if (entry.isDirectory()) collectFiles(full, results);
+    else if (/\.(tsx?|jsx?)$/.test(entry.name)) results.push(full);
   }
   return results;
 }
@@ -92,16 +86,30 @@ function charToLineFactory(source) {
   };
 }
 
-// ── 1. token definitions ─────────────────────────────────────────────────────
+// ── resolve target ─────────────────────────────────────────────────────────
 
-// Files whose basename looks like a token/theme module.
+function resolveTarget() {
+  const abs = path.resolve(rootDir, targetArg);
+  if (!fs.existsSync(abs)) {
+    return { resolved: false, files: [], componentName: null };
+  }
+  const stat = fs.statSync(abs);
+  const files = stat.isDirectory() ? collectFiles(abs) : [abs];
+  // Derive a component name: prefer directory name, else basename without extension.
+  let componentName;
+  if (stat.isDirectory()) {
+    componentName = path.basename(abs);
+  } else {
+    componentName = path.basename(abs).replace(/\.(tsx?|jsx?)$/, '');
+    if (componentName === 'index') componentName = path.basename(path.dirname(abs));
+  }
+  return { resolved: true, files, componentName, absTargetPath: abs };
+}
+
+// ── 1. brand surface (token defs + theming approach) ──────────────────────
+
 const TOKEN_FILE_RE = /(^|[./-])(tokens|theme|themes|colors|palette|design-?system|design-?tokens|styles?)\.(tsx?|jsx?)$/i;
-
-// `export const tokens = {`, `export const theme = {`, `export const colors = {`, etc.
-const TOKEN_EXPORT_RE =
-  /export\s+(?:const|default|let|var)\s+([A-Za-z_$][\w$]*)\s*[:=]/g;
-
-// Heuristic: an exported identifier that names a design surface.
+const TOKEN_EXPORT_RE = /export\s+(?:const|default|let|var)\s+([A-Za-z_$][\w$]*)\s*[:=]/g;
 const TOKEN_NAME_RE = /^(tokens?|theme|themes|colors?|palette|spacing|space|radii|radius|shadows?|typography|type|fonts?|motion|elevation|darkTheme|lightTheme|dark|light)$/i;
 
 function findTokenDefinitions(files) {
@@ -111,19 +119,15 @@ function findTokenDefinitions(files) {
     try { source = fs.readFileSync(filePath, 'utf-8'); } catch { continue; }
     const rel = path.relative(rootDir, filePath);
     const charToLine = charToLineFactory(source);
-
     const nameMatchesFile = TOKEN_FILE_RE.test(path.basename(filePath));
     const exportsFound = [];
-
     for (const m of source.matchAll(TOKEN_EXPORT_RE)) {
       const name = m[1];
       if (nameMatchesFile || TOKEN_NAME_RE.test(name)) {
         exportsFound.push({ name, line: charToLine(m.index) });
       }
     }
-
     if (exportsFound.length === 0) continue;
-
     defs.push({
       file: rel,
       kind: nameMatchesFile ? 'token-module' : 'token-export',
@@ -131,20 +135,16 @@ function findTokenDefinitions(files) {
       line: exportsFound[0].line,
     });
   }
-  // Token modules first, then files with the most token exports.
   return defs.sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === 'token-module' ? -1 : 1;
     return b.exports.length - a.exports.length;
   });
 }
 
-// ── 2. theming infra ─────────────────────────────────────────────────────────
-
-// Ordered by specificity — first hit with the most evidence wins as `approach`.
 const THEMING_SIGNALS = [
   { approach: 'nativewind',        re: /\b(?:className\s*=|nativewind|tailwind\.config|useColorScheme\(\)[^]*className)/, label: 'NativeWind className / tailwind.config' },
   { approach: 'restyle',           re: /@shopify\/restyle|createTheme|useTheme<\s*Theme\s*>|createBox|createText/, label: '@shopify/restyle' },
-  { approach: 'styled-components',  re: /styled-components(?:\/native)?|styled\.\w+`|ThemeProvider/, label: 'styled-components' },
+  { approach: 'styled-components', re: /styled-components(?:\/native)?|styled\.\w+`|ThemeProvider/, label: 'styled-components' },
   { approach: 'tamagui',           re: /tamagui|createTamagui|@tamagui\//, label: 'Tamagui' },
   { approach: 'unistyles',         re: /react-native-unistyles|createStyleSheet|UnistylesRegistry/, label: 'react-native-unistyles' },
   { approach: 'context-usetheme',  re: /useTheme\s*\(\)|ThemeContext|createContext\([^)]*theme/i, label: 'useTheme() / ThemeContext' },
@@ -153,163 +153,184 @@ const THEMING_SIGNALS = [
 ];
 
 function findThemingInfra(files) {
-  const tally = new Map(); // approach -> { count, evidence: [...] }
+  const tally = new Map();
   for (const filePath of files) {
     let source;
     try { source = fs.readFileSync(filePath, 'utf-8'); } catch { continue; }
     const rel = path.relative(rootDir, filePath);
     const charToLine = charToLineFactory(source);
-
     for (const sig of THEMING_SIGNALS) {
       const m = source.match(sig.re);
       if (!m) continue;
-      if (!tally.has(sig.approach)) tally.set(sig.approach, { count: 0, label: sig.label, evidence: [] });
+      if (!tally.has(sig.approach)) tally.set(sig.approach, { count: 0, evidence: [] });
       const entry = tally.get(sig.approach);
       entry.count++;
-      if (entry.evidence.length < 10) {
+      if (entry.evidence.length < 5) {
         entry.evidence.push({ signal: sig.label, file: rel, line: charToLine(m.index) });
       }
     }
   }
-
-  // Pick the most specific approach that has real evidence. THEMING_SIGNALS is
-  // ordered specific→generic; vanilla StyleSheet is the fallback only if it is
-  // the sole signal present.
   let approach = 'unknown';
   const nonVanilla = [...tally.keys()].filter(k => k !== 'stylesheet' && k !== 'usecolorscheme');
   if (nonVanilla.length > 0) {
-    // Honor THEMING_SIGNALS order for specificity.
     approach = THEMING_SIGNALS.find(s => nonVanilla.includes(s.approach))?.approach ?? nonVanilla[0];
-  } else if (tally.has('usecolorscheme')) {
-    approach = 'usecolorscheme';
-  } else if (tally.has('stylesheet')) {
-    approach = 'stylesheet';
-  }
-
+  } else if (tally.has('usecolorscheme')) approach = 'usecolorscheme';
+  else if (tally.has('stylesheet')) approach = 'stylesheet';
   const evidence = [];
-  for (const [, entry] of tally) {
-    for (const e of entry.evidence) evidence.push(e);
-  }
-
+  for (const [, entry] of tally) for (const e of entry.evidence) evidence.push(e);
   return { approach, evidence };
 }
 
-// ── 3. blast radius ───────────────────────────────────────────────────────────
+// ── 2. usage sites (importers of the target) ──────────────────────────────
 
-function resolveTargetFiles(allFiles) {
-  if (!targetArg) return null;
-  const abs = path.resolve(rootDir, targetArg);
-  if (!fs.existsSync(abs)) return { resolved: false, files: [] };
-  const stat = fs.statSync(abs);
-  if (stat.isDirectory()) {
-    return { resolved: true, files: collectFiles(abs) };
-  }
-  return { resolved: true, files: [abs] };
-}
-
-// A "token" reference in the target is a member access off a theme-ish root:
-//   tokens.color.accent, theme.spacing.lg, colors.primary, t.color.bg
-const TOKEN_REF_RE =
-  /\b(tokens?|theme|colors?|palette|t)\.([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)/g;
-
-function collectTargetTokens(targetFiles) {
-  const tokens = new Set();
-  for (const filePath of targetFiles) {
-    let source;
-    try { source = fs.readFileSync(filePath, 'utf-8'); } catch { continue; }
-    for (const m of source.matchAll(TOKEN_REF_RE)) {
-      // Normalize to root.firstSegment (e.g. tokens.color) so we measure at a
-      // useful granularity rather than every leaf.
-      const root = m[1];
-      const firstSeg = m[2].split('.')[0];
-      tokens.add(`${root}.${firstSeg}`);
-    }
-  }
-  return [...tokens];
-}
-
-function computeBlastRadius(targetTokens, allFiles, targetFiles) {
+function findUsageSites(componentName, targetFiles, allFiles) {
   const targetSet = new Set(targetFiles.map(f => path.resolve(f)));
-  const consumers = new Map(); // token -> { count, files: Set }
-
-  for (const token of targetTokens) consumers.set(token, { count: 0, files: new Set() });
-
-  // Escape for regex; match the same root.firstSeg shape anywhere in the project.
-  const patterns = targetTokens.map(tok => ({
-    token: tok,
-    re: new RegExp('\\b' + tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'),
-  }));
-
+  const importRe = new RegExp(
+    `import\\s+(?:\\{[^}]*\\b${componentName}\\b[^}]*\\}|${componentName}|\\*\\s+as\\s+\\w+)\\s+from\\s+['"]([^'"]+)['"]`,
+    'g'
+  );
+  const sites = [];
   for (const filePath of allFiles) {
-    const isTarget = targetSet.has(path.resolve(filePath));
+    if (targetSet.has(path.resolve(filePath))) continue;
     let source;
     try { source = fs.readFileSync(filePath, 'utf-8'); } catch { continue; }
-    const rel = path.relative(rootDir, filePath);
-    for (const { token, re } of patterns) {
-      const hits = source.match(re);
-      if (!hits) continue;
-      const entry = consumers.get(token);
-      entry.count += hits.length;
-      // Files OUTSIDE the target are the actual blast radius.
-      if (!isTarget) entry.files.add(rel);
+    const charToLine = charToLineFactory(source);
+    for (const m of source.matchAll(importRe)) {
+      const rel = path.relative(rootDir, filePath);
+      sites.push({
+        file: rel,
+        line: charToLine(m.index),
+        importedAs: componentName,
+        fromPath: m[1],
+      });
+      break; // one entry per importing file is enough
     }
   }
+  return sites;
+}
 
-  return [...consumers.entries()]
-    .map(([token, { count, files }]) => ({
-      token,
-      count,
-      otherConsumerCount: files.size,
-      files: [...files].slice(0, 20),
-    }))
-    .sort((a, b) => b.otherConsumerCount - a.otherConsumerCount);
+// ── 3. flow neighbors (what surrounds <Target/> in each usage file) ───────
+
+function findFlowNeighbors(componentName, usageSites) {
+  const elementOpenRe = /<([A-Z][A-Za-z0-9_]*)\b/g;
+  const targetTagRe = new RegExp(`<${componentName}\\b`, 'g');
+  const neighbors = [];
+
+  for (const site of usageSites) {
+    const filePath = path.resolve(rootDir, site.file);
+    let source;
+    try { source = fs.readFileSync(filePath, 'utf-8'); } catch { continue; }
+
+    // Collect all JSX-like opens, then for each target occurrence pick the
+    // N elements before and after by character position.
+    const allOpens = [];
+    for (const m of source.matchAll(elementOpenRe)) {
+      allOpens.push({ tag: m[1], index: m.index });
+    }
+    const targetIndices = [...source.matchAll(targetTagRe)].map(m => m.index);
+    if (targetIndices.length === 0) continue;
+
+    for (const targetIdx of targetIndices) {
+      const positionInOpens = allOpens.findIndex(o => o.index === targetIdx);
+      if (positionInOpens < 0) continue;
+      const before = allOpens.slice(Math.max(0, positionInOpens - 4), positionInOpens)
+        .map(o => o.tag).filter(t => t !== componentName);
+      const after = allOpens.slice(positionInOpens + 1, positionInOpens + 5)
+        .map(o => o.tag).filter(t => t !== componentName);
+      neighbors.push({ screen: site.file, before, after });
+    }
+  }
+  return neighbors;
+}
+
+// ── 4. sibling treatment (other components on shared screens) ─────────────
+
+function findSiblingTreatment(usageSites, componentName) {
+  const elementOpenRe = /<([A-Z][A-Za-z0-9_]*)\b/g;
+  const styleRefRe = /style\s*=\s*\{([^}]+)\}/g;
+
+  const result = [];
+  for (const site of usageSites) {
+    const filePath = path.resolve(rootDir, site.file);
+    let source;
+    try { source = fs.readFileSync(filePath, 'utf-8'); } catch { continue; }
+
+    const tagCounts = new Map();
+    for (const m of source.matchAll(elementOpenRe)) {
+      const tag = m[1];
+      if (tag === componentName) continue;
+      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+    }
+    // Same-treatment heuristic: pull style references and count which style
+    // identifiers are reused across the file (a proxy for "looks the same").
+    const styleRefs = new Map();
+    for (const m of source.matchAll(styleRefRe)) {
+      const ref = m[1].trim().split(/[,\s]+/)[0];
+      if (!ref) continue;
+      styleRefs.set(ref, (styleRefs.get(ref) ?? 0) + 1);
+    }
+    const reusedStyles = [...styleRefs.entries()]
+      .filter(([, n]) => n >= 2)
+      .map(([ref, n]) => ({ ref, count: n }));
+
+    const siblings = [...tagCounts.entries()]
+      .filter(([tag]) => /^[A-Z]/.test(tag) && !['View','Text','ScrollView','SafeAreaView','Fragment'].includes(tag))
+      .map(([name, occurrences]) => ({ name, occurrences }))
+      .sort((a, b) => b.occurrences - a.occurrences)
+      .slice(0, 10);
+
+    result.push({
+      screen: site.file,
+      siblings,
+      sameTreatmentSignal: reusedStyles.length > 0
+        ? { reusedStyles, hint: 'Multiple elements share style refs — hierarchy may be flat.' }
+        : { reusedStyles: [], hint: 'No reused style refs detected.' },
+    });
+  }
+  return result;
 }
 
 // ── main ───────────────────────────────────────────────────────────────────
 
 function run() {
   if (!fs.existsSync(rootDir)) {
-    process.stderr.write(
-      `rethink-scan: directory not found: ${rootDir}\n` +
-      `  Run from the root of your React Native project, or pass --dir=path.\n`
-    );
+    process.stderr.write(`rethink-scan: directory not found: ${rootDir}\n`);
+    process.exit(1);
+  }
+  const allFiles = collectFiles(rootDir);
+  if (allFiles.length === 0) {
+    process.stderr.write(`rethink-scan: no .ts/.tsx files found under ${rootDir}\n`);
     process.exit(1);
   }
 
-  const files = collectFiles(rootDir);
-  if (files.length === 0) {
-    process.stderr.write(
-      `rethink-scan: no .ts/.tsx files found under ${rootDir}\n` +
-      `  Check that you are running from your project root.\n`
-    );
+  const target = resolveTarget();
+  if (!target.resolved) {
+    process.stderr.write(`rethink-scan: target not found: ${targetArg}\n`);
     process.exit(1);
   }
 
-  const tokenDefinitions = findTokenDefinitions(files);
-  const themingInfra = findThemingInfra(files);
-
-  const target = resolveTargetFiles(files);
-  let blastRadius = null;
-  if (target && target.resolved && target.files.length > 0) {
-    const targetTokens = collectTargetTokens(target.files);
-    blastRadius = {
-      targetTokens,
-      consumers: targetTokens.length > 0
-        ? computeBlastRadius(targetTokens, files, target.files)
-        : [],
-    };
-  }
+  const tokenDefinitions = findTokenDefinitions(allFiles);
+  const themingInfra = findThemingInfra(allFiles);
+  const usageSites = findUsageSites(target.componentName, target.files, allFiles);
+  const flowNeighbors = findFlowNeighbors(target.componentName, usageSites);
+  const siblingTreatment = findSiblingTreatment(usageSites, target.componentName);
 
   const result = {
-    tokenDefinitions,
-    themingInfra,
-    blastRadius,
+    brandSurface: {
+      tokenDefinitions,
+      themingInfra,
+      policy: 'read-only — rethink may compose these tokens differently but never proposes value changes.',
+    },
+    usageSites,
+    flowNeighbors,
+    siblingTreatment,
     summary: {
-      totalFiles: files.length,
+      totalFiles: allFiles.length,
+      componentName: target.componentName,
+      usageSiteCount: usageSites.length,
       hasTokenModule: tokenDefinitions.some(d => d.kind === 'token-module'),
       approach: themingInfra.approach,
-      targetResolved: target ? target.resolved : false,
-      note: buildNote(tokenDefinitions, themingInfra, blastRadius),
+      note: buildNote(target, tokenDefinitions, usageSites, siblingTreatment),
     },
   };
 
@@ -317,25 +338,21 @@ function run() {
   process.exit(0);
 }
 
-function buildNote(defs, infra, blast) {
+function buildNote(target, defs, sites, siblings) {
   const parts = [];
-  if (defs.length === 0) {
-    parts.push('No token module found — the redesign can define one freely; nothing to stay retrocompatible with.');
+  if (sites.length === 0) {
+    parts.push(`No usage sites found for "${target.componentName}". Either the component is unused (candidate for deletion) or imports use a non-standard path the scan missed — verify manually.`);
   } else {
-    parts.push(`${defs.length} design-system declaration(s) found; consult them before mutating any value.`);
+    parts.push(`${target.componentName} is mounted in ${sites.length} file(s).`);
   }
-  parts.push(`Theming approach: ${infra.approach}.`);
-  if (blast) {
-    const heavy = blast.consumers.filter(c => c.otherConsumerCount >= 3);
-    if (heavy.length > 0) {
-      parts.push(`High blast radius on ${heavy.map(c => c.token).join(', ')} — favor KEEP or add a new token rather than mutating.`);
-    } else if (blast.targetTokens.length > 0) {
-      parts.push('Target tokens have low blast radius — safe to redesign freely.');
-    } else {
-      parts.push('Target references no shared tokens — fully free to redesign.');
-    }
+  if (defs.length === 0) {
+    parts.push('No token module found — the redesign has no brand vocabulary to compose from. Run /impeccable-native document or /impeccable-native rebrand first.');
   } else {
-    parts.push('No --target passed: blast radius not computed. Re-run with --target=path for retrocompatibility guidance.');
+    parts.push(`${defs.length} token declaration(s) available as read-only vocabulary.`);
+  }
+  const flatScreens = siblings.filter(s => s.sameTreatmentSignal.reusedStyles.length >= 3);
+  if (flatScreens.length > 0) {
+    parts.push(`Flat hierarchy signal on ${flatScreens.length} screen(s) — the redesign's job is to break sameness meaningfully.`);
   }
   return parts.join(' ');
 }

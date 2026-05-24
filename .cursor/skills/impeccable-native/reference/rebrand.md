@@ -8,9 +8,9 @@ Use `rebrand` when:
 - The app's foundation is strong but the brand and visual identity are off — wrong concept, not wrong execution.
 - The app has been built without a designer and has drifted into a mashup of styles (different blues that aren't quite the same, three font families that shouldn't coexist, sharp and pill radii in the same flow).
 - A rebrand is needed and the team wants the new system to be derived from real evidence, not vibes.
-- `rethink` has been applied to a few screens, the developer likes the direction, and now the whole app needs to follow.
+- `break` has been applied to a few screens, the developer likes the direction, and now the whole app needs to follow.
 
-Do not use `rebrand` when the existing system is coherent and you just want to refresh colors — that's `migration` with a new palette. Do not use it for a single screen — that's `rethink`.
+Do not use `rebrand` when the existing system is coherent and you just want to refresh colors — that's `migration` with a new palette. Do not use it for a single screen — that's `break` or `rethink`.
 
 ## Sub-modes
 
@@ -264,7 +264,7 @@ If `.impeccable/rebrand-state.json` exists, load it and continue from where the 
 ## What `rebrand` Is NOT
 
 - Not a refactor tool — it produces a brief, not file changes. `migration` applies the brief.
-- Not a `rethink` for the whole app — `rethink` reconciles with the existing system. `rebrand` replaces it.
+- Not a `break` for the whole app — `break` reconciles one component with the existing system. `rebrand` replaces the system.
 - Not a color picker — color is one of seven token surfaces, and every decision is justified by position.
 - Not magic — the directions are bets. The forced-divergence rule keeps them honest, but the user picks.
 

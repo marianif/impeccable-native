@@ -9,6 +9,7 @@ allowed-tools:
   - Bash(node {{scripts_path}}/extract-tokens.mjs *)
   - Bash(node {{scripts_path}}/platform-parity.mjs *)
   - Bash(node {{scripts_path}}/a11y-audit.mjs *)
+  - Bash(node {{scripts_path}}/break-scan.mjs *)
   - Bash(node {{scripts_path}}/rethink-scan.mjs *)
   - Bash(node {{scripts_path}}/flow-scan.mjs *)
   - Bash(node {{scripts_path}}/migration/migration-scan.mjs *)
@@ -187,7 +188,8 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `quieter [target]` | Refine | Tone down aggressive or overstimulating designs | [reference/quieter.md](reference/quieter.md) |
 | `distill [target]` | Refine | Strip to essence, remove visual complexity | [reference/distill.md](reference/distill.md) |
 | `harden [target]` | Refine | Production-ready: error states, edge cases, i18n, font scaling | [reference/harden.md](reference/harden.md) |
-| `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
+| `rethink [target]` | Refine | Purpose-driven redesign within the brand. Brand tokens are read-only; the creative work is making every UI choice trace back to the component's role in the choreography. Default after a rebrand or migration. | [reference/rethink.md](reference/rethink.md) |
+| `break [target]` | Refine | Reimagine a component from scratch and *break* the design system to do it — then reconcile with the existing tokens (KEEP / UPDATE / NEW). Use when the brand itself is part of what's wrong. | [reference/break.md](reference/break.md) |
 | `migration --scope=<scope>` | Evaluate | Replace the entire design system across a flow or app with a phased, script-driven plan | [reference/migration.md](reference/migration.md) |
 | `rebrand [scan \| direction \| resume]` | Build | Author a new brand and design system from scratch — forensics on the current mess, then 3 divergent directions, then a brief that `migration` consumes | [reference/rebrand.md](reference/rebrand.md) |
 | `design-system [scan \| plan \| execute \| resume]` | Build | Design the component layer as living things on screens — atoms, molecules, organisms tied to vibe, journey, and evidence. Brownfield: catalogues components, clusters duplicates, harvests implicit organisms, maps screen choreography. Greenfield: projects from brand brief + PRODUCT.md. Per-cluster cleanup approvals; organisms require the five-question gate (job / lives in / states / reacts to / neighbors) | [reference/design-system.md](reference/design-system.md) |

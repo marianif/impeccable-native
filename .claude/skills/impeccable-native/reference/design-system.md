@@ -17,7 +17,7 @@ Use `design-system` when:
 
 Do not use `design-system` for:
 
-- A single screen redesign — that's `rethink`.
+- A single screen redesign — that's `rethink` (purpose-driven, brand-respecting) or `break` (questions the system).
 - Replacing tokens — that's `migration`.
 - Deciding the brand or vibe — that's `rebrand`.
 - Bulk renaming or generic deduping with no compositional intent — that's `extract`.
@@ -343,7 +343,7 @@ If `.impeccable/design-system-state.json` exists, load it and continue from wher
 
 - Not a generic component-kit generator. Every entry is tied to a journey, a vibe trait, and evidence.
 - Not a token authoring tool. Tokens come from `brand-brief.json`. If the brief is missing a value an organism needs, the command stops and asks for it.
-- Not a screen redesigner. It composes from the choreography; it doesn't re-lay-out screens. (That's `rethink` or `shape`.)
+- Not a screen redesigner. It composes from the choreography; it doesn't re-lay-out screens. (That's `rethink`, `break`, or `shape`.)
 - Not silent. Cleanup never executes without per-cluster approval; organisms never ship without a complete `life` block.
 
 ## NEVER

@@ -1,8 +1,8 @@
 # Migration
 
-Rethink and replace an app's design system across an entire flow or the whole app — with scripts that map every corner of the token surface, compute safe migration order, and gate each phase on verification before proceeding.
+Replace an app's design system across an entire flow or the whole app — with scripts that map every corner of the token surface, compute safe migration order, and gate each phase on verification before proceeding.
 
-`migration` is not `rethink` at scale. `rethink` is one component, one decision. `migration` inverts the relationship: the blast radius IS the work. You are not asking "can I change this token without breaking things?" — you are saying "I am changing the entire system; tell me everything that has to move with it, in what order, and how to verify each step doesn't regress."
+`migration` is not `break` at scale. `break` is one component, one decision. `migration` inverts the relationship: the blast radius IS the work. You are not asking "can I change this token without breaking things?" — you are saying "I am changing the entire system; tell me everything that has to move with it, in what order, and how to verify each step doesn't regress."
 
 Use `migration` when:
 - The app's design system is wrong at the concept level — not just a screen or component.
@@ -10,7 +10,7 @@ Use `migration` when:
 - A rebrand requires updating every color, type, and spacing token across multiple flows.
 - The existing token surface is inconsistent and needs to be replaced with a coherent system.
 
-Do not use `migration` when `rethink` is enough. If the problem is one component or one screen, that's `rethink`. `migration` is for when the whole system is the problem.
+Do not use `migration` when `break` is enough. If the problem is one component or one screen, that's `break` (or `rethink` if the brand is right and only the component's role needs reworking). `migration` is for when the whole system is the problem.
 
 ## Before You Start: Declare the Scope
 
@@ -59,7 +59,7 @@ Never skip blockers. Present them with specific file:line references so the deve
 
 > **Skip this step if `--brand-brief=<path>` was passed.** A brand brief produced by `{{command_prefix}}impeccable-native rebrand direction` already contains the position, the new token system with rationale per token, and the dispositions. Read it, present a one-screen summary to the developer for confirmation, then jump to Step 4. If no brief was supplied, derive the new system inline as described below.
 
-With the brief in hand, design the new token system — this is `rethink`'s Step 1 at system scale.
+With the brief in hand, design the new token system — this is `break`'s Step 1 at system scale.
 
 - Write the **scene sentence** for the whole app: who uses it, under what conditions, what it should feel like. This drives the new system, not the old one.
 - Decide the token axes to migrate. The brief's clusters tell you which tokens are semantically bonded and must move together. Design within clusters — don't propose migrating `colors.primary` without also designing `colors.onPrimary`.
@@ -399,7 +399,7 @@ Do not include the old guidance. Do not append a "superseded" section. The brief
 ## What `migration` Is NOT
 
 - Not a refactor tool — code structure is not in scope, only the design token surface.
-- Not a `rethink` for multiple screens — if it's one screen, use `rethink`.
+- Not a `break` for multiple screens — if it's one screen, use `break` or `rethink`.
 - Not an audit — `audit` runs *inside* migration phases, not the other way around.
 - Not automatic — every phase requires explicit developer go/no-go. The command's value is the plan and the verification harness.
 

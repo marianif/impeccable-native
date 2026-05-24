@@ -80,7 +80,11 @@
     "argumentHint": "[target]"
   },
   "rethink": {
-    "description": "Reimagine a screen or component's UI and UX from scratch, including radical changes to color, style, and overall vibe, then reconcile that vision with the existing design system. Scans token definitions, theming approach, and blast radius, then proposes each token as update, keep, or new for the developer to decide. Use when a component's design is uninspired, derivative, or wrong at the concept level, not when it just needs tuning.",
+    "description": "Purpose-driven redesign of a component within the existing brand. Treats tokens as read-only vocabulary; the creative work is making every UI choice — weight, density, prominence, motion, hierarchy — trace back to the component's role in the choreography. Scans token surface (read-only), usage sites, flow neighbors, and sibling treatment on shared screens, then forces five purpose questions before any visual decision. Default after a rebrand or migration when tokens are freshly authoritative and UI needs to catch up. For questioning the design system itself, use break instead.",
+    "argumentHint": "[target]"
+  },
+  "break": {
+    "description": "Reimagine a screen or component from scratch and break the design system to do it — including radical changes to color, style, and overall vibe — then reconcile that vision with the existing tokens via a KEEP / UPDATE / NEW disposition per token, surfacing blast radius before any value change. Use when the component's design is wrong at the concept level AND the existing tokens are part of what's wrong. For brand-respecting purpose-driven redesign, use rethink.",
     "argumentHint": "[target]"
   },
   "flow": {

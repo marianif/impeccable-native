@@ -1,7 +1,7 @@
 ---
 name: impeccable-native
 description: Use when the user wants to design, build, critique, audit, polish, clarify, harden, optimize, adapt, animate, colorize, or otherwise improve a React Native or Expo mobile interface. Covers app screens, navigation flows, component design, onboarding, empty states, settings, dashboards, and mobile design systems. Handles visual hierarchy, touch targets, safe areas, platform parity (iOS/Android), accessibility (VoiceOver/TalkBack), performance (re-renders, FlatList), theming (light/dark), typography (Dynamic Type, font scaling), motion (Reanimated 3, Moti), layout (Yoga flexbox), and token-based design systems. Also use for bland mobile UIs that need more personality, overdesigned UIs that should be quieter, or ambitious effects with Skia and Reanimated. Not for web, backend, or non-UI tasks.
-version: 0.8.2
+version: 0.9.0
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
 ---
 
@@ -157,7 +157,8 @@ If someone could look at this screen and say "AI made that" without doubt, it ha
 | `quieter [target]` | Refine | Tone down aggressive or overstimulating designs | [reference/quieter.md](reference/quieter.md) |
 | `distill [target]` | Refine | Strip to essence, remove visual complexity | [reference/distill.md](reference/distill.md) |
 | `harden [target]` | Refine | Production-ready: error states, edge cases, i18n, font scaling | [reference/harden.md](reference/harden.md) |
-| `rethink [target]` | Refine | Reimagine a component from scratch, then reconcile with the design system | [reference/rethink.md](reference/rethink.md) |
+| `rethink [target]` | Refine | Purpose-driven redesign within the brand. Brand tokens are read-only; the creative work is making every UI choice trace back to the component's role in the choreography. Default after a rebrand or migration. | [reference/rethink.md](reference/rethink.md) |
+| `break [target]` | Refine | Reimagine a component from scratch and *break* the design system to do it — then reconcile with the existing tokens (KEEP / UPDATE / NEW). Use when the brand itself is part of what's wrong. | [reference/break.md](reference/break.md) |
 | `migration --scope=<scope>` | Evaluate | Replace the entire design system across a flow or app with a phased, script-driven plan | [reference/migration.md](reference/migration.md) |
 | `rebrand [scan \| direction \| resume]` | Build | Author a new brand and design system from scratch — forensics on the current mess, then 3 divergent directions, then a brief that `migration` consumes | [reference/rebrand.md](reference/rebrand.md) |
 | `design-system [scan \| plan \| execute \| resume]` | Build | Design the component layer as living things on screens — atoms, molecules, organisms tied to vibe, journey, and evidence. Brownfield: catalogues components, clusters duplicates, harvests implicit organisms, maps screen choreography. Greenfield: projects from brand brief + PRODUCT.md. Per-cluster cleanup approvals; organisms require the five-question gate (job / lives in / states / reacts to / neighbors) | [reference/design-system.md](reference/design-system.md) |
