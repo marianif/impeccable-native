@@ -48,10 +48,76 @@ function flag(name) {
   return f ? f.slice(name.length + 3) : null;
 }
 const rootDir = path.resolve(flag('dir') ?? process.cwd());
+const treePath = flag('tree'); // path to directory-tree.json (auto-generated if absent)
 const componentsDirs = (flag('components-dir') ?? 'components,src/components,app/components')
   .split(',').map(s => s.trim()).filter(Boolean);
 const screensDirs = (flag('screens-dir') ?? 'screens,app,src/screens')
   .split(',').map(s => s.trim()).filter(Boolean);
+
+// ── directory-tree loader ─────────────────────────────────────────────────
+
+function loadDirectoryTree() {
+  if (treePath) {
+    try { return JSON.parse(fs.readFileSync(path.resolve(treePath), 'utf-8')); }
+    catch (err) {
+      process.stderr.write(`component-inventory: failed to load --tree=${treePath}: ${err.message}\n`);
+      // fall through to auto-generate
+    }
+  }
+  const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+  const treeScript = path.join(scriptDir, 'directory-tree.mjs');
+  try {
+    const out = execFileSync('node', [treeScript, `--dir=${rootDir}`], {
+      stdio: ['ignore', 'pipe', 'inherit'],
+      maxBuffer: 64 * 1024 * 1024,
+    }).toString();
+    return JSON.parse(out);
+  } catch (err) {
+    process.stderr.write(`component-inventory: directory-tree generation failed: ${err.message}\n`);
+    return null;
+  }
+}
+
+// Map a component-folder kind to the component-kind it implies.
+const FOLDER_KIND_TO_COMPONENT_KIND = {
+  'atoms-folder':     'atom',
+  'molecules-folder': 'molecule',
+  'organisms-folder': 'organism',
+  'templates-folder': 'template',
+  'pages-folder':     'page',
+};
+
+/**
+ * Given a file's relative path and the directory tree, find the most-specific
+ * folder kind that contains it, then map that to a component kind.
+ * Returns null if no path-based kind can be derived (e.g. flat layout, no
+ * atomic-design folders).
+ */
+function kindFromTree(relFile, tree) {
+  if (!tree?.componentFolders?.length) return null;
+  // Find the deepest folder whose path is a prefix of relFile.
+  let bestMatch = null;
+  for (const folder of tree.componentFolders) {
+    const folderPath = folder.path;
+    if (relFile === folderPath || relFile.startsWith(folderPath + '/') || relFile.startsWith(folderPath + path.sep)) {
+      if (!bestMatch || folder.path.length > bestMatch.path.length) bestMatch = folder;
+    }
+  }
+  if (!bestMatch) return null;
+  // Walk up: if the leaf is a `component-folder`, look at its parent for the
+  // atomic-design kind.
+  if (bestMatch.kind === 'component-folder') {
+    const parentPath = path.dirname(bestMatch.path);
+    const parent = tree.componentFolders.find(f => f.path === parentPath);
+    if (parent && FOLDER_KIND_TO_COMPONENT_KIND[parent.kind]) {
+      return { kind: FOLDER_KIND_TO_COMPONENT_KIND[parent.kind], source: 'path', folder: bestMatch.path };
+    }
+  }
+  if (FOLDER_KIND_TO_COMPONENT_KIND[bestMatch.kind]) {
+    return { kind: FOLDER_KIND_TO_COMPONENT_KIND[bestMatch.kind], source: 'path', folder: bestMatch.path };
+  }
+  return null;
+}
 
 const IGNORE_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.expo', '.metro-cache',
@@ -376,21 +442,26 @@ function gitLastTouched(filePath) {
 // ── kind heuristic ────────────────────────────────────────────────────────
 
 /**
- * Rough kind heuristic from structural signals only. Refined later by
- * Act 2; this is meant to be useful, not authoritative.
+ * Structural kind heuristic. Fallback only — when the directory tree gives
+ * us a path-based kind, that wins, because folder placement is stated intent.
  *
- *   atom            — no internal composition, ≤4 props, single root tag
- *   molecule        — composes 1–3 internal components OR 5–10 props
+ *   atom            — no internal composition, ≤6 props, single root tag
+ *                     (raised from 4 — typed wrappers like Text commonly carry
+ *                     5–6 style-shaping props and are still atoms)
+ *   molecule        — composes 1–3 internal components, OR ≥7 props
  *   organism        — composes ≥4 internal components OR has state hooks + composition
  *   screen-fragment — file lives under a screens dir
  *   unknown         — couldn't decide
  */
-function guessKind({ internalComponentCount, propsCount, hasStateHook, isUnderScreensDir }) {
+function guessKindStructural({ internalComponentCount, propsCount, hasStateHook, isUnderScreensDir, rendersOnlyBuiltins }) {
   if (isUnderScreensDir) return 'screen-fragment';
-  if (internalComponentCount === 0 && propsCount <= 4) return 'atom';
+  if (internalComponentCount === 0 && propsCount <= 6) return 'atom';
+  // Wrapper-around-a-single-primitive escape: if a component renders only RN
+  // built-ins (no internal composition) it's an atom regardless of prop count.
+  if (internalComponentCount === 0 && rendersOnlyBuiltins) return 'atom';
   if (internalComponentCount >= 4) return 'organism';
   if (hasStateHook && internalComponentCount >= 2) return 'organism';
-  if (internalComponentCount >= 1 || propsCount >= 5) return 'molecule';
+  if (internalComponentCount >= 1 || propsCount >= 7) return 'molecule';
   return 'unknown';
 }
 
@@ -426,12 +497,26 @@ function buildUsageIndex(allFiles, componentNames) {
 // ── main ──────────────────────────────────────────────────────────────────
 
 function run() {
-  const componentRoots = existingDirs(componentsDirs);
-  const screenRoots = existingDirs(screensDirs);
+  // Load the directory tree first — it's the source of truth for which folders
+  // hold components and what kind they are.
+  const tree = loadDirectoryTree();
 
-  // Component files: anything under componentRoots that defines an exported component.
+  // Derive component roots from the tree if it has any; otherwise fall back
+  // to the --components-dir defaults.
+  let componentRootsAbs;
+  if (tree?.roots?.components?.length > 0) {
+    componentRootsAbs = tree.roots.components.map(p => path.join(rootDir, p));
+  } else {
+    componentRootsAbs = existingDirs(componentsDirs);
+  }
+  // Screens: prefer the tree too, then fall back.
+  const screenRootsAbs = (tree?.roots?.screens?.length > 0)
+    ? tree.roots.screens.map(p => path.join(rootDir, p))
+    : existingDirs(screensDirs);
+
+  // Component files: anything under componentRootsAbs that defines an exported component.
   const componentFiles = new Set();
-  for (const root of componentRoots) {
+  for (const root of componentRootsAbs) {
     for (const f of collectFiles(root, isSourceFile)) {
       if (!isTestFile(f) && !isStoryFile(f)) componentFiles.add(f);
     }
@@ -440,7 +525,7 @@ function run() {
   // All source files: needed for usage counts.
   const allFiles = collectFiles(rootDir, isSourceFile);
 
-  const screenPaths = new Set(screenRoots.map(r => path.relative(rootDir, r)));
+  const screenPaths = new Set(screenRootsAbs.map(r => path.relative(rootDir, r)));
   function isUnderScreensDir(rel) {
     for (const s of screenPaths) if (rel === s || rel.startsWith(s + path.sep)) return true;
     return false;
@@ -449,6 +534,9 @@ function run() {
   // Pass 1: detect components, props, internal composition.
   const partials = [];
   const allComponentNames = new Set();
+  // Track which leaf component-folders actually yielded components, so we can
+  // surface "folder exists but scanner found nothing" gaps later.
+  const componentsByFolder = new Map();
 
   for (const filePath of componentFiles) {
     let source;
@@ -463,15 +551,32 @@ function run() {
     // to the design system), to avoid counting random capitalized identifiers.
     const internalRendered = [...rendered].filter(n => localImports.has(n));
     const hasStateHook = /\b(useState|useReducer|useRef|useEffect|useLayoutEffect)\b/.test(source);
+    // Did this file render any non-builtin tags at all? Used for the
+    // single-primitive-wrapper escape in the structural heuristic.
+    const rendersOnlyBuiltins = rendered.size > 0 && internalRendered.length === 0;
 
     for (const comp of detected) {
       const { props, propsTypeName, parseConfidence } = extractProps(source, comp);
-      const kindGuess = guessKind({
+
+      const kindStructural = guessKindStructural({
         internalComponentCount: internalRendered.length,
         propsCount: props.length,
         hasStateHook,
         isUnderScreensDir: isUnderScreensDir(rel),
+        rendersOnlyBuiltins,
       });
+
+      const pathKind = kindFromTree(rel, tree);
+
+      let kindGuess, kindSource;
+      if (pathKind) {
+        kindGuess = pathKind.kind;
+        kindSource = 'path';
+      } else {
+        kindGuess = kindStructural;
+        kindSource = 'structural';
+      }
+      const kindConflict = pathKind != null && pathKind.kind !== kindStructural && kindStructural !== 'unknown';
 
       const entry = {
         name: comp.name,
@@ -482,12 +587,21 @@ function run() {
         propsTypeName,
         parseConfidence,
         renders: internalRendered,
+        rendersOnlyBuiltins,
         hasStateHook,
         kindGuess,
+        kindSource,
+        kindStructural,
+        kindConflict,
+        folderKind: pathKind?.folder ?? null,
         lastTouched: gitLastTouched(filePath),
       };
       partials.push(entry);
       allComponentNames.add(comp.name);
+      if (pathKind?.folder) {
+        if (!componentsByFolder.has(pathKind.folder)) componentsByFolder.set(pathKind.folder, []);
+        componentsByFolder.get(pathKind.folder).push(comp.name);
+      }
     }
   }
 
@@ -511,17 +625,47 @@ function run() {
     acc[c.kindGuess] = (acc[c.kindGuess] ?? 0) + 1;
     return acc;
   }, {});
+  const bySource = components.reduce((acc, c) => {
+    acc[c.kindSource] = (acc[c.kindSource] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  // Surface folder-vs-scanner gaps. If the tree says a component-folder
+  // exists but the scanner found 0 components in it, that's a parser miss
+  // (re-export from a barrel, wrapper chain we didn't detect, etc.).
+  const missingComponentFolders = [];
+  if (tree?.componentFolders) {
+    for (const folder of tree.componentFolders) {
+      if (!folder.isLeaf) continue;
+      if (folder.sourceFileCount === 0 && folder.barrelFileCount === 0) continue;
+      const found = componentsByFolder.get(folder.path) ?? [];
+      if (found.length === 0) {
+        missingComponentFolders.push({
+          path: folder.path,
+          kind: folder.kind,
+          sourceFileCount: folder.sourceFileCount,
+          barrelFileCount: folder.barrelFileCount,
+          reason: 'Folder contains source/barrel files but no exported component was detected. Likely a re-export pattern, an unsupported wrapper chain (e.g. memo(forwardRef(...))), or a non-component utility module.',
+        });
+      }
+    }
+  }
 
   const result = {
     components,
+    missingComponentFolders,
     summary: {
       rootDir,
-      componentRoots: componentRoots.map(r => path.relative(rootDir, r)),
-      screenRoots: screenRoots.map(r => path.relative(rootDir, r)),
+      treeSource: tree ? 'directory-tree' : 'fallback-components-dir',
+      componentRoots: componentRootsAbs.map(r => path.relative(rootDir, r)),
+      screenRoots: screenRootsAbs.map(r => path.relative(rootDir, r)),
       componentFilesScanned: componentFiles.size,
       totalSourceFiles: allFiles.length,
       componentCount: components.length,
       byKindGuess: byKind,
+      byKindSource: bySource,
+      kindConflicts: components.filter(c => c.kindConflict).length,
+      missingComponentFolders: missingComponentFolders.length,
       zeroUsage: components.filter(c => c.usageCount === 0).length,
       lowParseConfidence: components.filter(c => c.parseConfidence === 'low').length,
     },

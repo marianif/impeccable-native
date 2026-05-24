@@ -22,6 +22,7 @@ allowed-tools:
   - Bash(node {{scripts_path}}/rebrand/vibe-fingerprint.mjs *)
   - Bash(node {{scripts_path}}/rebrand/incoherence-report.mjs *)
   - Bash(node {{scripts_path}}/design-system/design-system-scan.mjs *)
+  - Bash(node {{scripts_path}}/design-system/directory-tree.mjs *)
   - Bash(node {{scripts_path}}/design-system/component-inventory.mjs *)
   - Bash(node {{scripts_path}}/design-system/duplication-report.mjs *)
   - Bash(node {{scripts_path}}/design-system/dead-code-report.mjs *)

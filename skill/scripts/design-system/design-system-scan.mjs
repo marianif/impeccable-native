@@ -77,6 +77,10 @@ function existsAnyComponentsDir() {
   return false;
 }
 
+function hasComponentsByTree(tree) {
+  return (tree?.roots?.components?.length ?? 0) > 0;
+}
+
 function loadBriefIfPresent() {
   const full = path.isAbsolute(briefPath) ? briefPath : path.join(rootDir, briefPath);
   try {
@@ -89,7 +93,7 @@ function loadBriefIfPresent() {
 
 // ── readiness verdict ─────────────────────────────────────────────────────
 
-function computeReadiness({ inventory, duplication, deadCode, patterns, anatomy, choreography, brief, mode }) {
+function computeReadiness({ directoryTree, inventory, duplication, deadCode, patterns, anatomy, choreography, brief, mode }) {
   const flags = [];
 
   if (!brief) {
@@ -100,6 +104,31 @@ function computeReadiness({ inventory, duplication, deadCode, patterns, anatomy,
   }
 
   if (mode === 'brownfield') {
+    // Directory-tree gaps: folders the agent should ask the user about, and
+    // folders that look component-shaped but the parser couldn't find a
+    // component in (re-exports, wrapper chains).
+    const clarifyCount = directoryTree?.needsClarification?.length ?? 0;
+    if (clarifyCount > 0) {
+      flags.push({
+        kind: 'unknown-folders',
+        message: `${clarifyCount} folder(s) under a components root that don't match a known pattern (atoms/molecules/organisms). Act 2 should ask the user once what each represents.`,
+      });
+    }
+    const missingFolders = inventory?.summary?.missingComponentFolders ?? 0;
+    if (missingFolders > 0) {
+      flags.push({
+        kind: 'parser-misses',
+        message: `${missingFolders} component folder(s) found by the directory scan yielded zero detected components. Likely re-export patterns or unsupported wrapper chains — Act 2 should investigate before proposing cleanup.`,
+      });
+    }
+    const conflicts = inventory?.summary?.kindConflicts ?? 0;
+    if (conflicts > 0) {
+      flags.push({
+        kind: 'kind-conflicts',
+        message: `${conflicts} component(s) sit in a folder that disagrees with their structural signature (e.g. a file in organisms/ whose code looks atomic). Either misfiled, under-implemented, or a thin wrapper that delegates — worth a look in Act 2.`,
+      });
+    }
+
     const componentCount = inventory?.summary?.componentCount ?? 0;
     const deadTotal = deadCode?.summary?.totalDeadOrTestOnly ?? 0;
     if (componentCount > 0 && deadTotal / componentCount >= 0.2) {
@@ -155,14 +184,24 @@ function verdictColor(v) {
 }
 
 function printSummary(forensics) {
-  const { mode, inventory, duplication, deadCode, patterns, anatomy, choreography, brief, summary } = forensics;
+  const { mode, directoryTree, inventory, duplication, deadCode, patterns, anatomy, choreography, brief, summary } = forensics;
 
   process.stdout.write('\n');
   process.stdout.write(`${BOLD}design-system scan complete${RESET}  ·  mode: ${mode}\n\n`);
 
   if (mode === 'brownfield') {
+    const conv = directoryTree?.conventions ?? {};
+    const conventionsSummary = [
+      conv.atomicDesign ? 'atomic-design' : null,
+      conv.componentPerFolder ? 'component-per-folder' : null,
+      conv.barrelExports ? 'barrels' : null,
+      conv.testColocation ? 'tests-colocated' : null,
+      conv.namingConvention && conv.namingConvention !== 'mixed' ? conv.namingConvention : null,
+    ].filter(Boolean).join(', ') || 'no recognized conventions';
+    const treeSummary = `${directoryTree?.summary?.componentFolderCount ?? 0} component folder(s)  ·  ${conventionsSummary}`;
     const rows = [
-      ['components', `${inventory.summary.componentCount} total  ·  ${JSON.stringify(inventory.summary.byKindGuess).replace(/[{}"]/g, '').replace(/,/g, ', ')}`],
+      ['tree', treeSummary],
+      ['components', `${inventory.summary.componentCount} total  ·  ${JSON.stringify(inventory.summary.byKindGuess).replace(/[{}"]/g, '').replace(/,/g, ', ')}${summary.kindConflicts > 0 ? `  ·  ${summary.kindConflicts} kind-conflict(s)` : ''}${summary.missingComponentFolders > 0 ? `  ·  ${summary.missingComponentFolders} missing` : ''}`],
       ['duplication', `${duplication.summary.clusterCount} cluster(s), ${duplication.summary.duplicatedComponentCount} component(s) implicated`],
       ['dead code', `${deadCode.summary.deadCount} dead  ·  ${deadCode.summary.transitivelyDeadCount} transitively dead  ·  ${deadCode.summary.testOnlyCount} test-only`],
       ['candidates', `${patterns.summary.candidateCount} organism candidate(s)  ·  ${patterns.summary.crossScreenCandidates} cross-screen  ·  ${patterns.summary.rawPatternCount} raw patterns considered`],
@@ -225,7 +264,15 @@ function printSummary(forensics) {
 
 async function run() {
   const brief = loadBriefIfPresent();
-  const hasComponents = existsAnyComponentsDir();
+
+  // First: map the codebase shape. Every other script reads this.
+  process.stderr.write('design-system-scan: mapping directory tree...\n');
+  const directoryTree = runScript('design-system/directory-tree.mjs');
+  const directoryTreePath = write('ds-directory-tree.json', directoryTree);
+
+  // Brownfield = tree found actual component roots. Fall back to the legacy
+  // path-existence check only if the tree somehow returned nothing useful.
+  const hasComponents = hasComponentsByTree(directoryTree) || existsAnyComponentsDir();
   const mode = hasComponents ? 'brownfield' : 'greenfield';
 
   let inventory = null, duplication = null, deadCode = null, patterns = null;
@@ -233,6 +280,7 @@ async function run() {
   if (mode === 'brownfield') {
     process.stderr.write('design-system-scan: cataloguing components...\n');
     inventory = runScript('design-system/component-inventory.mjs', [
+      `--tree=${directoryTreePath}`,
       `--components-dir=${componentsDirs}`, `--screens-dir=${screensDirs}`,
     ]);
     const inventoryPath = write('ds-component-inventory.json', inventory);
@@ -263,7 +311,7 @@ async function run() {
   write('ds-screen-choreography.json', choreography);
 
   const readiness = computeReadiness({
-    inventory, duplication, deadCode, patterns, anatomy, choreography, brief, mode,
+    directoryTree, inventory, duplication, deadCode, patterns, anatomy, choreography, brief, mode,
   });
 
   const forensics = {
@@ -272,6 +320,7 @@ async function run() {
     mode,
     rootDir,
     brief: brief ? { path: brief.path, position: brief.data?.position ?? null } : null,
+    directoryTree,
     inventory: inventory ?? null,
     duplication: duplication ?? null,
     deadCode: deadCode ?? null,
@@ -282,6 +331,10 @@ async function run() {
       mode,
       ...readiness,
       componentCount: inventory?.summary?.componentCount ?? 0,
+      kindConflicts: inventory?.summary?.kindConflicts ?? 0,
+      missingComponentFolders: inventory?.summary?.missingComponentFolders ?? 0,
+      unknownFolders: directoryTree?.needsClarification?.length ?? 0,
+      atomicDesign: directoryTree?.conventions?.atomicDesign ?? false,
       duplicationClusters: duplication?.summary?.clusterCount ?? 0,
       deadOrTestOnly: deadCode?.summary?.totalDeadOrTestOnly ?? 0,
       implicitOrganisms: patterns?.summary?.crossScreenCandidates ?? 0,
