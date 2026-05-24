@@ -294,7 +294,9 @@ async function run() {
     write('ds-dead-code.json', deadCode);
 
     process.stderr.write('design-system-scan: harvesting implicit organisms...\n');
-    patterns = runScript('design-system/composition-patterns.mjs', [`--screens-dir=${screensDirs}`]);
+    patterns = runScript('design-system/composition-patterns.mjs', [
+      `--tree=${directoryTreePath}`, `--screens-dir=${screensDirs}`,
+    ]);
     write('ds-composition-patterns.json', patterns);
   } else {
     process.stderr.write('design-system-scan: greenfield mode — skipping component inventory.\n');
@@ -302,12 +304,14 @@ async function run() {
 
   process.stderr.write('design-system-scan: reading app anatomy...\n');
   const anatomy = runScript('design-system/app-anatomy.mjs', [
-    `--product=${productPath}`, `--screens-dir=${screensDirs}`,
+    `--tree=${directoryTreePath}`, `--product=${productPath}`, `--screens-dir=${screensDirs}`,
   ]);
   write('ds-app-anatomy.json', anatomy);
 
   process.stderr.write('design-system-scan: mapping screen choreography...\n');
-  const choreography = runScript('design-system/screen-choreography.mjs', [`--screens-dir=${screensDirs}`]);
+  const choreography = runScript('design-system/screen-choreography.mjs', [
+    `--tree=${directoryTreePath}`, `--screens-dir=${screensDirs}`,
+  ]);
   write('ds-screen-choreography.json', choreography);
 
   const readiness = computeReadiness({

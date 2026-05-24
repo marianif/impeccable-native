@@ -42,8 +42,15 @@ function flag(name) {
   return f ? f.slice(name.length + 3) : null;
 }
 const rootDir = path.resolve(flag('dir') ?? process.cwd());
+const treePath = flag('tree');
 const screensDirs = (flag('screens-dir') ?? 'screens,app,src/screens')
   .split(',').map(s => s.trim()).filter(Boolean);
+
+function loadTree() {
+  if (!treePath) return null;
+  try { return JSON.parse(fs.readFileSync(path.resolve(treePath), 'utf-8')); }
+  catch { return null; }
+}
 
 const IGNORE_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.expo', '.metro-cache',
@@ -282,7 +289,9 @@ function buildScreenChoreography(filePath, screenRoot) {
 // ── main ──────────────────────────────────────────────────────────────────
 
 function run() {
-  const screenRoots = existingDirs(screensDirs);
+  const tree = loadTree();
+  const treeScreenRoots = (tree?.roots?.screens ?? []).map(p => path.join(rootDir, p));
+  const screenRoots = treeScreenRoots.length > 0 ? treeScreenRoots : existingDirs(screensDirs);
   const choreography = [];
 
   for (const root of screenRoots) {

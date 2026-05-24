@@ -29,6 +29,7 @@ allowed-tools:
   - Bash(node {{scripts_path}}/design-system/composition-patterns.mjs *)
   - Bash(node {{scripts_path}}/design-system/app-anatomy.mjs *)
   - Bash(node {{scripts_path}}/design-system/screen-choreography.mjs *)
+  - Bash(node {{scripts_path}}/design-system/validate-plan.mjs *)
   - Bash(node {{scripts_path}}/screenshot.mjs *)
   - Bash(node {{scripts_path}}/pin.mjs *)
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.

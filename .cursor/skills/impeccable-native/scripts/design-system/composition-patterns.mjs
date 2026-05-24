@@ -71,6 +71,7 @@ function flag(name) {
   return f ? f.slice(name.length + 3) : null;
 }
 const rootDir = path.resolve(flag('dir') ?? process.cwd());
+const treePath = flag('tree');
 const screensDirs = (flag('screens-dir') ?? 'screens,app,src/screens')
   .split(',').map(s => s.trim()).filter(Boolean);
 const minOccurrences = parseInt(flag('min-occurrences') ?? '3', 10);
@@ -78,6 +79,13 @@ const minElements = parseInt(flag('min-elements') ?? '6', 10);
 const minUniqueElementTypes = parseInt(flag('min-unique-element-types') ?? '4', 10);
 const minScreenSpread = parseInt(flag('min-screen-spread') ?? '2', 10);
 const jaccardMerge = parseFloat(flag('jaccard-merge') ?? '0.8');
+
+// Load the directory tree (if a path was given) for precise screen-root scoping.
+function loadTree() {
+  if (!treePath) return null;
+  try { return JSON.parse(fs.readFileSync(path.resolve(treePath), 'utf-8')); }
+  catch { return null; }
+}
 
 const IGNORE_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.expo', '.metro-cache',
@@ -384,7 +392,10 @@ function clusterPatterns(rawPatterns) {
 // ── main ──────────────────────────────────────────────────────────────────
 
 function run() {
-  const screenRoots = existingDirs(screensDirs);
+  // Prefer screen roots from the directory tree; fall back to --screens-dir.
+  const tree = loadTree();
+  const treeScreenRoots = (tree?.roots?.screens ?? []).map(p => path.join(rootDir, p));
+  const screenRoots = treeScreenRoots.length > 0 ? treeScreenRoots : existingDirs(screensDirs);
   if (screenRoots.length === 0) {
     process.stdout.write(JSON.stringify({
       candidates: [],

@@ -257,12 +257,33 @@ function run() {
 
   const uf = new UnionFind();
   const pairs = [];
+  let crossKindBlocked = 0;
+
+  // Kinds that, when both sides have a TRUSTED (path-sourced) kind, should
+  // never cluster together. A path-sourced atom and a path-sourced organism
+  // are not duplicates of each other no matter how similar their names look.
+  // Structural-sourced kinds are unreliable enough that we don't apply the
+  // block — same-name/same-shape pairs may legitimately be the same component
+  // even if the structural heuristic disagreed.
+  function crossKindBlock(a, b) {
+    if (a.kindSource !== 'path' || b.kindSource !== 'path') return false;
+    if (a.kindGuess === b.kindGuess) return false;
+    // Allow neighbors on the atomic-design ladder to cluster (an atom that's
+    // really a molecule, or vice versa, is a legitimate merge candidate). But
+    // an atom vs an organism, or an organism vs a page, are different worlds.
+    const ladder = ['atom', 'molecule', 'organism', 'template', 'page'];
+    const ia = ladder.indexOf(a.kindGuess);
+    const ib = ladder.indexOf(b.kindGuess);
+    if (ia === -1 || ib === -1) return false;
+    return Math.abs(ia - ib) >= 2;
+  }
 
   for (let i = 0; i < components.length; i++) {
     for (let j = i + 1; j < components.length; j++) {
       const a = components[i], b = components[j];
       // Don't cluster screen-fragments with components — they live in different worlds.
       if (a.kindGuess === 'screen-fragment' || b.kindGuess === 'screen-fragment') continue;
+      if (crossKindBlock(a, b)) { crossKindBlocked++; continue; }
 
       const nameSim = nameSimilarity(a.name, b.name);
       const propSim = propSimilarity(a.props ?? [], b.props ?? []);
@@ -276,11 +297,17 @@ function run() {
       const hits = (signals.name ? 1 : 0) + (signals.props ? 1 : 0) + (signals.shape ? 1 : 0);
       if (hits >= 2) {
         uf.union(a.name, b.name);
+        // Same-folder bonus: pairs that live in the same folder are more likely
+        // to be intentional duplicates than strangers. Surface this for the agent.
+        const aFolder = path.dirname(a.file);
+        const bFolder = path.dirname(b.file);
         pairs.push({
           a: a.name, b: b.name,
           nameSim: Math.round(nameSim * 100) / 100,
           propSim: Math.round(propSim * 100) / 100,
           shapeSim: Math.round(shapeSim * 100) / 100,
+          sameFolder: aFolder === bFolder,
+          sharedKind: a.kindGuess === b.kindGuess ? a.kindGuess : null,
           signals,
         });
       }
@@ -296,9 +323,11 @@ function run() {
       return {
         name: c.name,
         file: c.file,
+        folder: path.dirname(c.file),
         usageCount: c.usageCount,
         propCount: c.props?.length ?? 0,
         kindGuess: c.kindGuess,
+        kindSource: c.kindSource,
         rootTag: shapes.get(c.name)?.rootTag ?? null,
         rootChildren: shapes.get(c.name)?.children ?? [],
         lastTouched: c.lastTouched,
@@ -306,12 +335,18 @@ function run() {
     }).sort((a, b) => b.usageCount - a.usageCount);
 
     const memberPairs = pairs.filter(p => names.includes(p.a) && names.includes(p.b));
+    const kinds = [...new Set(members.map(m => m.kindGuess))];
+    const folders = [...new Set(members.map(m => m.folder))];
 
     return {
       id: `dup-cluster-${i + 1}`,
       jobGuess: guessSharedJob(members),
       suggestedWinner: suggestWinner(members),
       winnerJustification: 'Most-used; tie-broken by most recently touched, then most props. Verify in Act 2 by comparing the actual job each member is doing.',
+      kinds,
+      kindCoherent: kinds.length === 1,
+      folders,
+      sameFolder: folders.length === 1,
       members,
       pairwiseSignals: memberPairs,
       memberCount: members.length,
@@ -326,6 +361,9 @@ function run() {
       componentCount: components.length,
       clusterCount: clusters.length,
       duplicatedComponentCount: clusters.reduce((s, c) => s + c.memberCount, 0),
+      sameFolderClusters: clusters.filter(c => c.sameFolder).length,
+      kindCoherentClusters: clusters.filter(c => c.kindCoherent).length,
+      crossKindBlocked,
       thresholds: { name: nameThreshold, props: propThreshold, shape: 0.6 },
     },
   };

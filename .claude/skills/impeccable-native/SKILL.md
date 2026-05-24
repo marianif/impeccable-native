@@ -1,7 +1,7 @@
 ---
 name: impeccable-native
 description: Use when the user wants to design, build, critique, audit, polish, clarify, harden, optimize, adapt, animate, colorize, or otherwise improve a React Native or Expo mobile interface. Covers app screens, navigation flows, component design, onboarding, empty states, settings, dashboards, and mobile design systems. Handles visual hierarchy, touch targets, safe areas, platform parity (iOS/Android), accessibility (VoiceOver/TalkBack), performance (re-renders, FlatList), theming (light/dark), typography (Dynamic Type, font scaling), motion (Reanimated 3, Moti), layout (Yoga flexbox), and token-based design systems. Also use for bland mobile UIs that need more personality, overdesigned UIs that should be quieter, or ambitious effects with Skia and Reanimated. Not for web, backend, or non-UI tasks.
-version: 0.8.1
+version: 0.8.2
 user-invocable: true
 argument-hint: "[craft|teach|document|extract|adapt|animate|audit|bolder|clarify|colorize|critique|delight|distill|harden|onboard|layout|optimize|overdrive|polish|quieter|rethink|flow|migration|rebrand|design-system|shape|typeset] [target]"
 license: Apache 2.0. Forked from impeccable by Paul Bakaus. See NOTICE.md for attribution.
@@ -31,6 +31,7 @@ allowed-tools:
   - Bash(node {{scripts_path}}/design-system/composition-patterns.mjs *)
   - Bash(node {{scripts_path}}/design-system/app-anatomy.mjs *)
   - Bash(node {{scripts_path}}/design-system/screen-choreography.mjs *)
+  - Bash(node {{scripts_path}}/design-system/validate-plan.mjs *)
   - Bash(node {{scripts_path}}/screenshot.mjs *)
   - Bash(node {{scripts_path}}/pin.mjs *)
 ---

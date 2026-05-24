@@ -308,6 +308,14 @@ Also write `.impeccable/design-system.md` as a human-readable version. Section o
 
 Present the plan to the user and ask for approval before Act 3. Cleanup approvals are collected per cluster, not in bulk.
 
+**Mechanical gate.** Before presenting and before Act 3, run:
+
+```bash
+node .claude/skills/impeccable-native/scripts/design-system/validate-plan.mjs --plan=.impeccable/design-system-plan.json
+```
+
+The validator exits non-zero on any refusal-rule violation: missing `life` block, fewer than 3 states, missing neighbors (without a `solitudeNote`), missing evidence, missing job sentence, missing disposition, missing cleanup approval field, merges without `winner` or `memberJobs`, generic vibe traits, etc. **Do not present a plan that fails validation — fix it first.** Do not execute Act 3 until the validator returns `verdict: valid` AND all cleanup approvals are explicitly `approved` or `rejected` (none `pending`).
+
 ---
 
 ## Act 3 — Execution
