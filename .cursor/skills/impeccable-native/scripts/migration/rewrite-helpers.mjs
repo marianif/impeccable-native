@@ -203,6 +203,138 @@ export function promoteLiteral(source, literal, tokenExpression) {
   return edits;
 }
 
+// ── primitive: promote numeric literal ────────────────────────────────────
+
+/**
+ * Replace `<property>: <numericLiteral>` with `<property>: <tokenExpression>`
+ * inside style objects. Handles snap-to-scale violations like
+ *   padding: 17  →  padding: tokens.spacing.md
+ *   borderRadius: 9  →  borderRadius: tokens.radii.sm
+ *   fontSize: 15  →  fontSize: tokens.type.md
+ *
+ * Matches only the property:literal form (not arbitrary numbers).
+ * Skips comments and string literals.
+ */
+export function promoteNumericLiteral(source, property, literalValue, tokenExpression) {
+  const edits = [];
+  // Match property: <number> where number is the exact literal.
+  const valueStr = String(literalValue);
+  const escapedValue = valueStr.replace(/\./g, '\\.');
+  const re = new RegExp(`\\b${property}\\s*:\\s*${escapedValue}\\b`, 'g');
+  for (const m of source.matchAll(re)) {
+    if (isInsideCommentOrString(source, m.index)) continue;
+    const pos = lineAndCol(source, m.index);
+    const after = `${property}: ${tokenExpression}`;
+    edits.push({
+      line: pos.line,
+      col: pos.col,
+      offset: m.index,
+      length: m[0].length,
+      before: m[0],
+      after,
+      kind: 'numeric-promote',
+    });
+  }
+  return edits;
+}
+
+// ── primitive: add a new token to the tokens file ─────────────────────────
+
+/**
+ * Insert a new key:value pair into the tokens file at the right nesting
+ * level. Used to create `colors.unresolved.*` legacy tokens for off-palette
+ * colors that the script auto-promotes during migration.
+ *
+ *   addTokenToTokensFile(source, 'colors.unresolved.blue3b82f4', '#3B82F4')
+ *
+ * If the nesting path doesn't exist yet (e.g., `colors.unresolved` is
+ * missing), the helper creates it. Returns { edit } or { error }.
+ *
+ * Idempotent: if the key already exists with the same value, returns
+ * { skipped: true }.
+ */
+export function addTokenToTokensFile(source, dottedPath, value) {
+  const segments = dottedPath.split('.');
+  const leafKey = segments[segments.length - 1];
+  const ancestors = segments.slice(0, -1);
+  const lines = source.split('\n');
+
+  // First, detect if the leaf already exists.
+  const stack = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    const enterMatch = trimmed.match(/^(?:export\s+(?:const|let|var)\s+)?(\w+)\s*[:=]\s*\{/);
+    if (enterMatch) stack.push(enterMatch[1]);
+    if (trimmed.startsWith('}')) { stack.pop(); continue; }
+    if (ancestorsMatch(stack, ancestors)) {
+      const leafMatch = line.match(new RegExp(`^\\s*${leafKey}\\s*:\\s*['"]([^'"]+)['"]`));
+      if (leafMatch) {
+        if (leafMatch[1] === value) return { skipped: true, reason: 'token already exists' };
+        return { error: `token ${dottedPath} exists with different value ${leafMatch[1]}` };
+      }
+    }
+  }
+
+  // Find the closing brace of the deepest existing ancestor and insert
+  // before it. If a mid-ancestor is missing, we cannot safely insert —
+  // bail and let the agent open the file.
+  const insertion = findInsertionPoint(lines, ancestors);
+  if (!insertion) {
+    return { error: `could not find insertion point for ${dottedPath}` };
+  }
+
+  const { lineIndex, indent } = insertion;
+  const newLine = `${indent}${leafKey}: '${value}',`;
+  const offset = lines.slice(0, lineIndex).reduce((acc, l) => acc + l.length + 1, 0);
+  return {
+    edit: {
+      line: lineIndex + 1,
+      col: 1,
+      offset,
+      length: 0,
+      before: '',
+      after: newLine + '\n',
+      kind: 'token-add',
+    },
+  };
+}
+
+function findInsertionPoint(lines, ancestors) {
+  // Walk to find the closing brace of the innermost ancestor object.
+  // Returns the line index where insertion should happen and the indent
+  // to use for the new key.
+  const stack = [];
+  let targetClose = -1;
+  let targetIndent = '';
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    const enterMatch = trimmed.match(/^(?:export\s+(?:const|let|var)\s+)?(\w+)\s*[:=]\s*\{/);
+    if (enterMatch) {
+      stack.push({ name: enterMatch[1], indent: line.match(/^(\s*)/)[1] });
+      if (ancestorsMatch(stack.map(s => s.name), ancestors)) {
+        const inner = stack[stack.length - 1];
+        // Track the position so we can find its matching close
+        targetIndent = inner.indent + '  ';
+        // Walk forward to find the matching close brace at this depth
+        let depth = 1;
+        for (let j = i + 1; j < lines.length; j++) {
+          const jt = lines[j].trim();
+          if (/\{\s*$/.test(jt)) depth++;
+          if (/^\}/.test(jt)) {
+            depth--;
+            if (depth === 0) { targetClose = j; break; }
+          }
+        }
+        if (targetClose >= 0) return { lineIndex: targetClose, indent: targetIndent };
+      }
+    }
+    if (trimmed.startsWith('}')) stack.pop();
+  }
+  return null;
+}
+
 // ── change plan + apply ───────────────────────────────────────────────────
 
 /**

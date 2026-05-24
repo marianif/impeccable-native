@@ -121,13 +121,38 @@ Write two files to `.impeccable/`:
   ],
 
   "literalPromotions": [
-    // Hardcoded violations whose value matches a new token exactly.
-    { "id": "lit-1", "literal": "#3B82F6", "newTokenExpression": "tokens.colors.brand.primary",
-      "confidence": "high", "affectedFiles": ["..."] }
+    // Tier 1: exact value match — auto-promote with no developer attention.
+    { "id": "lit-1", "kind": "color-exact", "literal": "#5B3FFF",
+      "newTokenExpression": "tokens.colors.brand.primary",
+      "confidence": "exact", "affectedFiles": ["..."] },
+
+    // Tier 2: perceptual color match (ΔE2000 < 5.0) — auto-promote.
+    { "id": "lit-2", "kind": "color-perceptual", "literal": "#3B82F4",
+      "newTokenExpression": "tokens.colors.brand.primary",
+      "confidence": "perceptual", "deltaE": 0.8, "affectedFiles": ["..."] },
+
+    // Tier 2: numeric snap-to-scale — auto-promote.
+    { "id": "lit-3", "kind": "numeric-snap", "property": "padding", "literal": 17,
+      "newTokenExpression": "tokens.spacing.md",
+      "confidence": "snap", "originalValue": 17, "snappedValue": 16, "distance": 1,
+      "affectedFiles": ["..."] }
+  ],
+
+  "unresolvedPromotions": [
+    // Off-palette colors that don't match any brand token. The script
+    // creates a `colors.unresolved.<auto-name>` token in the tokens file,
+    // rewrites every literal call-site to use it, and surfaces the residue
+    // at cleanup. Names are deterministic so re-runs are idempotent.
+    { "id": "unres-1", "literal": "#7A8B3C", "createdToken": "colors.unresolved.green7a8b3c",
+      "tokenExpression": "tokens.colors.unresolved.green7a8b3c",
+      "addedTo": "src/theme/tokens.ts", "affectedFiles": ["..."],
+      "rationale": "off-palette, no perceptual match in new system; legacy token until cleanup" }
   ],
 
   "ambiguous": [
     // Things the agent refused to auto-resolve. Developer decides before phase 1 runs.
+    // With aggressive defaults this list is short — usually just real semantic ambiguity
+    // (one old token, two plausible new tokens), not "near misses on the scale."
     { "id": "amb-1", "issue": "colors.accent could map to brand.secondary OR feedback.highlight",
       "candidates": ["colors.brand.secondary", "colors.feedback.highlight"],
       "affectedFiles": ["..."] }
@@ -152,9 +177,31 @@ Write two files to `.impeccable/`:
 ### Rules for authoring
 
 - **Per-token rules, not per-site.** `{ old: "colors.primary", new: "colors.brand.primary", affectedFiles: [...] }` not one entry per line. The script expands at execution time. Compact and survives small codebase changes between table generation and execution.
-- **Three rule kinds, separate arrays.** Dotted-access rename, classname swap, literal promotion. Don't unify — each script section handles one kind cleanly.
+- **Rule kinds in separate arrays.** Dotted-access rename, classname swap, literal promotion (exact/perceptual/snap), unresolved promotion, ambiguous. Don't unify — each script section handles one kind cleanly.
 - **Destructured tokens go to the agent.** If the token graph shows a token referenced via `const { primary } = theme.colors`, add the file to `destructuredUsage` instead of `renameRules`. Alias tracking across modules is silent-bug territory.
-- **Literal promotion only when confidence is high.** Auto-promote if the literal value matches a new token's value exactly. Anything else — close-but-not-equal hex, "this looks like spacing.lg" — goes to the ambiguous list.
+
+### Aggressive defaults for literal promotion
+
+Use the scan data — `migration-violations.json` already computed `nearestToken` for every violation — and snap aggressively:
+
+| Kind | Auto-promote if | Goes to ambiguous if |
+|---|---|---|
+| `color-exact` | hex matches new token value exactly | (never) |
+| `color-perceptual` | ΔE2000 < 5.0 against a new token | no new token within ΔE 5.0 → unresolvedPromotions |
+| `numeric-snap` (spacing/radius) | distance ≤ 4pt from nearest scale step | distance > 4pt AND equidistant between two steps |
+| `numeric-snap` (fontSize) | distance ≤ 2pt from nearest scale step | distance > 2pt AND equidistant between two steps |
+
+Type is more sensitive than spacing (2pt vs 4pt). Otherwise the goal is to drain the ambiguous list — real ambiguity is rare; most violations have a clear nearest answer.
+
+### Off-palette colors → unresolvedPromotions
+
+Colors that don't perceptually match any new token are **not** dumped on the agent. The script:
+
+1. Creates a `colors.unresolved.<auto-name>` token in the tokens file. Name is deterministic: hue family + truncated hex (e.g., `#7A8B3C` → `green7a8b3c`). Same hex always gets the same name across re-runs.
+2. Rewrites every literal call-site to use the new token.
+3. Records the creation in `unresolvedPromotions` so the audit step can surface it.
+
+The brand brief is **not modified** — these are temporary legacy tokens, not approved additions. The brief stays as the developer approved it. The cleanup commit (Step 5) blocks until every `colors.unresolved.*` is resolved (mapped to a brand token, or explicitly accepted as a legitimate exception like data-viz palette or third-party brand assets).
 
 ### Approval gate
 
@@ -187,6 +234,8 @@ import {
   replaceValueInTokensFile,
   replaceClassname,
   promoteLiteral,
+  promoteNumericLiteral,
+  addTokenToTokensFile,
   planChanges,
   applyChanges,
   emitReport,
@@ -236,11 +285,26 @@ for (const file of phaseFiles) {
   }
   for (const promo of table.literalPromotions) {
     if (!promo.affectedFiles.includes(file)) continue;
-    if (promo.confidence !== 'high') {
-      requiresAgent.push({ file, reason: `literal ${promo.literal} needs review` });
-      continue;
+    if (promo.kind === 'numeric-snap') {
+      plan.add(file, promoteNumericLiteral(src, promo.property, promo.literal, promo.newTokenExpression));
+    } else {
+      // color-exact and color-perceptual — same promotion mechanic
+      plan.add(file, promoteLiteral(src, promo.literal, promo.newTokenExpression));
     }
-    plan.add(file, promoteLiteral(src, promo.literal, promo.newTokenExpression));
+  }
+  for (const promo of table.unresolvedPromotions ?? []) {
+    if (!promo.affectedFiles.includes(file)) continue;
+    plan.add(file, promoteLiteral(src, promo.literal, promo.tokenExpression));
+  }
+}
+
+// 3) Create unresolved tokens in the tokens file (once per phase that owns it).
+const tokensFile = table.tokenFileChanges[0]?.file;
+if (tokensFile && phaseFiles.includes(tokensFile)) {
+  const src = fs.readFileSync(path.resolve(rootDir, tokensFile), 'utf-8');
+  for (const promo of table.unresolvedPromotions ?? []) {
+    if (promo.addedTo !== tokensFile) continue;
+    plan.add(tokensFile, addTokenToTokensFile(src, promo.createdToken, promo.literal));
   }
 }
 
@@ -301,8 +365,12 @@ Add a one-line comment `// migrated to v2 tokens — phase N` at the top of each
 
 ## Step 5: Cleanup
 
-Only after every screen in scope passes audit on both platforms:
+Only after every screen in scope passes audit on both platforms **and every `colors.unresolved.*` token has been resolved**:
 
+0. **Resolve unresolved tokens.** Read `unresolvedPromotions` from the substitution table. For each `colors.unresolved.*` still referenced in code:
+   - Map it to a brand token (rewrite call-sites, delete the unresolved entry), OR
+   - Explicitly accept it as a legitimate exception (data-viz palette, third-party brand asset, hard-coded illustration color) and move it to a clearly-named non-unresolved namespace like `colors.exceptions.*` with a one-line `why` comment.
+   Cleanup **cannot proceed** while `colors.unresolved.*` tokens remain. Surface the list with file:line evidence and ask the developer to decide each one.
 1. Delete the old token declarations.
 2. Remove the dual-resident shim / namespace.
 3. Sweep the `// migrated to v2 tokens` comments.
@@ -352,3 +420,5 @@ Re-running the scan regenerates the brief. Check the new brief against the origi
 - Introduce a second theming system alongside the existing one during migration.
 - Skip the `audit` gate between phases — regressions compound across phases and become impossible to attribute.
 - Perform the cleanup commit before every screen in scope passes audit on both platforms.
+- Perform the cleanup commit while `colors.unresolved.*` tokens still exist. Resolve them first.
+- Modify the brand brief to absorb unresolved tokens. The brief is what the developer approved; unresolved tokens are temporary legacy debt, not approved additions.
