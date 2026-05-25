@@ -353,7 +353,7 @@ const EXCLUDED_FROM_SUGGESTIONS = new Set([
 // Sub-commands of /impeccable-native that appear in {{available_commands}}.
 const IMPECCABLE_SUB_COMMANDS = [
   'adapt', 'animate', 'audit', 'bolder', 'break', 'clarify', 'colorize',
-  'craft', 'critique', 'delight', 'distill', 'document', 'extract',
+  'craft', 'critique', 'delight', 'design-system', 'distill', 'document', 'extract',
   'flow', 'harden', 'layout', 'migration', 'onboard', 'optimize', 'overdrive', 'polish',
   'quieter', 'rebrand', 'rethink', 'shape', 'teach', 'typeset',
 ];

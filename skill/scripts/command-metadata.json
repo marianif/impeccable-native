@@ -99,6 +99,10 @@
     "description": "Author a brand-new design system from scratch for an existing app. Two-act skill: Act 1 (scan) runs forensics on the current visual surface — perceptual color clustering (CIEDE2000), incoherence hunting, vibe fingerprinting; Act 2 (direction) interrogates position with 5-7 questions then generates three genuinely divergent brand directions across six axes (temperature, density, voice, posture, era, convention), each a complete brand with token system and ASCII mockup. User picks or remixes; skill writes brand-brief.json that /migration consumes directly. Use when the foundation is strong but the brand is wrong, or when a vibecoded app has drifted into a mashup of styles.",
     "argumentHint": "scan | direction | resume"
   },
+  "design-system": {
+    "description": "Design a purpose-driven component layer for the app — atoms, molecules, and organisms that exist because they serve a measurable outcome (core/success metrics from PRODUCT.md), not because a generic checklist says so. The charter (DESIGN-SYSTEM.md) defines purpose-slots — five interaction kinds (action / inform / navigate / confirm / capture) crossed with the product's journey phases. A deterministic per-repo state script (synthesized once, then cached) decides what to do next: author the charter, run the inventory, refresh stale data, judge, or resume pending proposals. Inventory walks component roots and emits descriptive facts only — no judgment in scripts. The model then joins slots × components and writes verdicts (filled / partial / unfilled / over-served; earns-place / mis-purposed / redundant / orphan / merge-candidate). Greenfield (no components yet) and brownfield (existing component layer) share the same model. Proposals apply on per-row approval. Use after /rebrand + /migration to rethink composition, or to bootstrap a non-generic component layer.",
+    "argumentHint": ""
+  },
   "shape": {
     "description": "Plan UX and UI before code. Runs a required multi-round discovery interview, uses visual probes when available, and produces a user-confirmed design brief for implementation.",
     "argumentHint": "[feature to shape]"

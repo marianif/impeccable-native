@@ -1,7 +1,7 @@
 {
   "name": "impeccable-native",
   "description": "React Native design fluency for AI coding agents. 1 skill with 28 commands (/impeccable-native craft, /impeccable-native audit, /impeccable-native flow, /impeccable-native design-system, etc.) tuned for mobile-first UI work.",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "author": {
     "name": "Federica Mariani"
   },
